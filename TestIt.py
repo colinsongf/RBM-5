@@ -5,8 +5,6 @@ from DataLoader import DataLoader
 from RBM import RMB
 import numpy as np
 
-
-
 RBMTest = RMB()
 DataLoaderTest = DataLoader()
 
@@ -18,6 +16,28 @@ endTime = time();
 print("Learning Time: " +str(endTime - startTime))
 
 predictIt = np.matrix('1 0 1 0 1; 0 1 0 1 0')
+print("Propably Scores: " + str(np.around(RBMTest.prediction(predictIt)))) #rounded result, [ 0.  1.  0.  1.  0.] expected
+
+
+RBMTest = RMB(hiddenLayerSize = 5, ranksNumber = 5)
+DataLoaderTest = DataLoader()
+
+startTime = time();
+for i in range(10000):
+    RBMTest.learn(np.matrix('''1 0 0 0 0;
+                               0 1 0 0 0;
+                               0 0 1 0 0;
+                               0 0 0 1 0;
+                               0 0 0 0 1'''))
+
+endTime = time();
+print("Learning Time: " +str(endTime - startTime))
+
+predictIt = np.matrix('''1 0 0 0 0;
+                         0 1 0 0 0;
+                         0 0 1 0 0;
+                         0 0 0 1 0;
+                         0 0 0 0 1''')
 print("Propably Scores: " + str(np.around(RBMTest.prediction(predictIt)))) #rounded result, [ 0.  1.  0.  1.  0.] expected
 
 

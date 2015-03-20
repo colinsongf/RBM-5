@@ -11,7 +11,7 @@ CastGeneratorToArray = lambda x: np.fromiter((x), np.float64)
 CastToArray = lambda x: np.array((x), np.float64)
 
 class RMB():
-    def __init__(self, artistsNumber = 5, ranksNumber = 2, hiddenLayerSize = 3, learningRate = 0.1):
+    def __init__(self, artistsNumber = 5, ranksNumber = 2, hiddenLayerSize = 2, learningRate = 0.1):
         self.ArtistsNumber = artistsNumber
         self.RanksNumber = ranksNumber
         self.HiddenLayerSize = hiddenLayerSize
