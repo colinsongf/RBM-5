@@ -43,6 +43,7 @@ class RMB():
 
     def learn(self, V = None, T = 1):
         #TODO Updating biases
+        #TODO When Changing T
         gradient = lambda v,h: Multiply(v, h.T)
 
         self.VisibleLayer = V
