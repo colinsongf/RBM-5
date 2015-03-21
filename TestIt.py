@@ -116,7 +116,7 @@ SimpleTest2(1000)
 
 print(("-----{0}-----").format("Time Test on Real data"))
 TimeTest()
-# TimeTest(epoch=10)
+TimeTest(epoch=10)
 
 print(("-----{0}-----").format("Profile Test on Real data"))
 ProfileTest()
