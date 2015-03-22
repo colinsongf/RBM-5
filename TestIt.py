@@ -72,9 +72,8 @@ def SimpleTest2(times):
     """.format(times, learningTime, predictionTime, predictScores, roundedScores, likelihood))
 
 def TimeTest(miniBatchSize = 100, epoch = 1):
-    RBMReal = RMB(17765, 5, 10)
+    RBMReal = RMB(17765, 5, 100)
 
-    startTime = time();
     DataLoaderReal = DataLoader(miniBatchesFolder = "TestData\\", epochsNumber = epoch)
     startTime = time();
     try:
@@ -83,7 +82,7 @@ def TimeTest(miniBatchSize = 100, epoch = 1):
                 V  = DataLoaderReal.getVisibleData()
                 if j == miniBatchSize - 1:
                     likelihood = 1 - RBMReal.learn(V, showLikelihood = True)
-                    print("Epoch {0} Likelihood {1:0.5f}".format(i, likelihood))
+                    print("\tEpoch {0} Likelihood {1:0.5f}".format(i, likelihood))
                 else:
                     RBMReal.learn(V)
     except:
@@ -101,7 +100,7 @@ def TimeTest(miniBatchSize = 100, epoch = 1):
     """.format(miniBatchSize, epoch, learningTime))
 
 def ProfileTest(miniBatchSize = 100, epoch = 1):
-    RBMReal = RMB(17765, 5, 10)
+    RBMReal = RMB(17765, 5, 100)
     DataLoaderReal = DataLoader(miniBatchesFolder = "TestData\\", epochsNumber = epoch)
 
     pr = cProfile.Profile()
@@ -130,7 +129,7 @@ SimpleTest2(100)
 SimpleTest2(1000)
 
 print(("-----{0}-----").format("Time Test on Real data"))
-TimeTest(miniBatchSize=101, epoch=1)
+TimeTest(miniBatchSize=100, epoch=10)
 
 print(("-----{0}-----").format("Profile Test on Real data"))
-# ProfileTest()
+ProfileTest()

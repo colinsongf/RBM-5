@@ -40,6 +40,7 @@ class RMB():
         return (product/product.sum(1)).reshape(self.RanksNumber,self.ArtistsNumber)                #keep calm and pray it work
 
     def learn(self, V = None, T = 1, showLikelihood = False):
+        #TODO try learning with erasing visible states
         gradient = lambda v,h: Multiply(v, h.T)
 
         self.VisibleLayer = VisibleData = V
@@ -66,7 +67,7 @@ class RMB():
         self.HiddenLayer = self.computeProbabilityTheHiddenStates().reshape(1, self.HiddenLayerSize)
         self.VisibleLayer = self.computeUpdateTheVisibleStates()
 
-        return Multiply(self.VisibleLayer, self.Ranks).sum(axis = 0)
+        return Multiply(self.VisibleLayer, self.Ranks).sum(0)
 
 
     def saveRBM(self):
