@@ -1,17 +1,9 @@
-from time import time
-from functools import wraps
-from timeit import timeit
-
-
-import pprint
 __author__ = 'Olek'
 
 import numpy as np
-from numpy import random
 from scipy.special import expit as Sigmoid
 from numpy import multiply as Multiply
 from numpy import exp as Exponent
-from numpy import matrix as CastToMatrix
 
 CastGeneratorToArray = lambda x: np.fromiter((x), np.float64)
 CastToArray = lambda x: np.array((x), np.float64)
@@ -28,8 +20,8 @@ class RMB():
         self.HiddenLayer = np.zeros((1, hiddenLayerSize), dtype=np.float64)                     #h
         self.VisibleLayer = np.ones((ranksNumber, artistsNumber), dtype=np.float64)             #V
 
-        self.HiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)                  #a
-        self.VisibleLayerBiases = np.random.normal(0.01, 0.01, (ranksNumber, artistsNumber))    #b  #TODO the proportion of training vectors in which unit i is on
+        self.HiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)               #A
+        self.VisibleLayerBiases = np.random.normal(0.01, 0.01, (ranksNumber, artistsNumber))    #B  #TODO the proportion of training vectors in which unit i is on
 
         self.Weights = np.random.normal(0, 0.01, (ranksNumber, hiddenLayerSize, artistsNumber)) #W
 
@@ -44,10 +36,10 @@ class RMB():
 
     def computeUpdateTheVisibleStates(self):
         # Eq. 1
-        product = Exponent(self.VisibleLayerBiases+np.dot(self.HiddenLayer,self.Weights))           #σ(b+h·w)
+        product = Exponent(self.VisibleLayerBiases+np.dot(self.HiddenLayer,self.Weights))           #σ(B+h·W)
         return (product/product.sum(1)).reshape(self.RanksNumber,self.ArtistsNumber)                #keep calm and pray it work
 
-    def learn(self, V = None, T = 1):
+    def learn(self, V = None, T = 1, showLikelihood = False):
         gradient = lambda v,h: Multiply(v, h.T)
 
         self.VisibleLayer = VisibleData = V
@@ -65,9 +57,9 @@ class RMB():
         self.Weights += self.LearningRate*(positiveGradient - negativeGradient)
         self.HiddenLayerBiases += self.LearningRate*(HiddenData - self.HiddenLayer)
         self.VisibleLayerBiases += self.LearningRate*(VisibleData - self.VisibleLayer)
-
-        rsm = (V-self.VisibleLayer)
-        print("{0:0.5f}".format(np.mean(np.multiply(rsm,rsm))))
+        if showLikelihood:
+            rsm = (V-self.VisibleLayer)
+            return np.mean(np.multiply(rsm,rsm))
 
     def prediction(self, V = None):
         self.VisibleLayer = V
