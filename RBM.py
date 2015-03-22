@@ -18,73 +18,40 @@ CastToArray = lambda x: np.array((x), np.float64)
 
 class RMB():
     def __init__(self, artistsNumber = 5, ranksNumber = 2, hiddenLayerSize = 2, learningRate = 0.1):
-        self.ArtistsNumber = artistsNumber
-        self.RanksNumber = ranksNumber
-        self.HiddenLayerSize = hiddenLayerSize
+        self.ArtistsNumber = artistsNumber                                                      #M
+        self.RanksNumber = ranksNumber                                                          #K
+        self.HiddenLayerSize = hiddenLayerSize                                                  #F
         self.LearningRate = np.float64(learningRate)
 
         self.Ranks = np.arange(ranksNumber, dtype=np.float64).reshape(ranksNumber,1)
 
-        self.HiddenLayer = np.zeros((1, hiddenLayerSize), dtype=np.float64)
-        self.VisibleLayer = np.ones((ranksNumber, artistsNumber), dtype=np.float64)
+        self.HiddenLayer = np.zeros((1, hiddenLayerSize), dtype=np.float64)                     #h
+        self.VisibleLayer = np.ones((ranksNumber, artistsNumber), dtype=np.float64)             #V
 
-        self.HiddenLayerBiases = np.zeros((hiddenLayerSize), dtype=np.float64)
-        self.VisibleLayerBiases = np.random.normal(0.01, 0.01, (ranksNumber, artistsNumber)) #TODO the proportion of training vectors in which unit i is on
+        self.HiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)                  #a
+        self.VisibleLayerBiases = np.random.normal(0.01, 0.01, (ranksNumber, artistsNumber))    #b  #TODO the proportion of training vectors in which unit i is on
 
-        self.Weights = np.random.normal(0, 0.01, (ranksNumber, hiddenLayerSize, artistsNumber))
+        self.Weights = np.random.normal(0, 0.01, (ranksNumber, hiddenLayerSize, artistsNumber)) #W
 
     def computeProbabilityTheHiddenStates(self):
         # Eq. 2
-
-        expressionInsideTheParentheses = np.vectorize(lambda j: self.HiddenLayerBiases[j] + (Multiply(self.VisibleLayer, self.Weights[:,j])).sum())
-
-        # print(self.VisibleLayer.shape)
-        # print(self.Weights.shape)
-        #
-        # print(np.kron(self.VisibleLayer * self.Weights)+self.HiddenLayer)
-        # print(Multiply(self.VisibleLayer, self.Weights))
-
-        # print(self.HiddenLayerBiases[0] + (Multiply(self.VisibleLayer, self.Weights[:,0])).sum())
-
-        # print([expressionInsideTheParentheses(j) for j in range(self.HiddenLayerSize)])
-        #
-        # test = np.arange(5)
-        # print(test)
-        #
-
+        expressionInsideTheParentheses = np.vectorize(lambda j: self.HiddenLayerBiases[0,j] + (Multiply(self.VisibleLayer, self.Weights[:,j])).sum())
         return Sigmoid(expressionInsideTheParentheses(np.arange(self.HiddenLayerSize)))
 
     def computeUpdateTheHiddenStates(self):
         probabilities = self.computeProbabilityTheHiddenStates()
-        return np.random.binomial(1,probabilities, size=(1,self.HiddenLayerSize))
+        return np.random.binomial(1,probabilities, size=(1,self.HiddenLayerSize))                   #draw a hidden feature
 
     def computeUpdateTheVisibleStates(self):
         # Eq. 1
-        product = Exponent(self.VisibleLayerBiases+np.dot(self.HiddenLayer,self.Weights))
-        return (product/product.sum(1)).reshape(self.RanksNumber,self.ArtistsNumber) #keep calm and pray it work
-
-    # def learn(self, V = None, T = 1):
-    #     #TODO Updating biases
-    #     #TODO When Changing T
-    #
-    #     self.VisibleLayer = V
-    #     self.HiddenLayer = self.computeUpdateTheHiddenStates()
-    #
-    #     positiveGradient = np.kron(self.VisibleLayer, self.HiddenLayer.T)
-    #
-    #     for i in range(T):
-    #         self.VisibleLayer = self.computeUpdateTheVisibleStates()
-    #         self.HiddenLayer = self.computeUpdateTheHiddenStates()
-    #
-    #     negativeGradient = np.kron(self.VisibleLayer, self.HiddenLayer.T)
-    #
-    #     self.Weights += Multiply(self.LearningRate,np.split((positiveGradient - negativeGradient),self.RanksNumber, 0))
+        product = Exponent(self.VisibleLayerBiases+np.dot(self.HiddenLayer,self.Weights))           #σ(b+h·w)
+        return (product/product.sum(1)).reshape(self.RanksNumber,self.ArtistsNumber)                #keep calm and pray it work
 
     def learn(self, V = None, T = 1):
         gradient = lambda v,h: Multiply(v, h.T)
 
-        self.VisibleLayer = V
-        self.HiddenLayer = self.computeUpdateTheHiddenStates()
+        self.VisibleLayer = VisibleData = V
+        self.HiddenLayer = HiddenData = self.computeUpdateTheHiddenStates()
 
         positiveGradient = CastToArray([gradient(self.VisibleLayer[k,:], self.HiddenLayer) for k in range(self.RanksNumber)])
 
@@ -94,7 +61,13 @@ class RMB():
 
         negativeGradient = CastToArray([gradient(self.VisibleLayer[k,:], self.HiddenLayer) for k in range(self.RanksNumber)])
 
+        #updating
         self.Weights += self.LearningRate*(positiveGradient - negativeGradient)
+        self.HiddenLayerBiases += self.LearningRate*(HiddenData - self.HiddenLayer)
+        self.VisibleLayerBiases += self.LearningRate*(VisibleData - self.VisibleLayer)
+
+        rsm = (V-self.VisibleLayer)
+        print("{0:0.5f}".format(np.mean(np.multiply(rsm,rsm))))
 
     def prediction(self, V = None):
         self.VisibleLayer = V
