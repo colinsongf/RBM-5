@@ -129,15 +129,12 @@ def TimeTestCutted(miniBatchSize = 100, epoch = 1, startFrom = 0, RBMReal = None
         """.format(miniBatchSize, epoch, learningTime))
 
 def TimeTestCuttedParallely(miniBatchSize = 100, epoch = 1):
-    RBMLIST = []
+    RBM = RMBCutted(17765, 4, 100)
+
     threads = []
-    for i in range(10):
-        RBMLIST.append(RMBCutted(17765, 4, 100))
-
-
     startTime = time()
     for i in range(10):
-        threads.append(Thread(target=TimeTestCutted, args = (miniBatchSize, epoch, i, RBMLIST[i], False)))
+        threads.append(Thread(target=TimeTestCutted, args = (miniBatchSize, epoch, i, RBM, False)))
 
     for i in range(10):
         threads[i].start()
@@ -200,7 +197,7 @@ def ProfileTestCutted(miniBatchSize = 100, epoch = 1):
 
 
 print(("-----{0}-----").format("Time Test Cutted RBM on Real data"))
-TimeTestCutted(miniBatchSize=1000, epoch=50)
+# TimeTestCutted(miniBatchSize=1000, epoch=50)
 
 print(("-----{0}-----").format("Time Test Cutted Parallel RBM on Real data"))
 TimeTestCuttedParallely(miniBatchSize=100, epoch=50)
