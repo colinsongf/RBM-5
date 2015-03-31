@@ -40,6 +40,7 @@ class RMBCutted():
         #Konice Synchronizowane miedzy watkiami
 
         self.GlobalVisibleLayerBiases = np.random.normal(0.01, 0.01, (ranksNumber, artistsNumber))    #B  #TODO the proportion of training vectors in which unit i is on
+        self.GlobalHiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)
         self.GlobalWeights = np.random.normal(0, 0.01, (ranksNumber, hiddenLayerSize, artistsNumber)) #W
 
     def computeProbabilityTheHiddenStates(self, HiddenLayerBiases, VisibleLayer, Weights):
@@ -60,17 +61,13 @@ class RMBCutted():
         #TODO try learning with erasing visible states
         gradient = lambda v,h: Multiply(v, h.T)
 
-
         Weights = self.GlobalWeights[:,:,VVector]
         MomentumTable = self.MomentumTable[:,:,VVector]
-
         VisibleLayerBiases = self.GlobalVisibleLayerBiases[:,VVector]
+        HiddenLayerBiases = self.HiddenLayerBiases
 
         ArtistsNumber = len(VVector)
         VisibleLayer = VisibleData = V
-
-        HiddenLayerBiases = self.HiddenLayerBiases
-
         HiddenLayer = HiddenData = self.computeUpdateTheHiddenStates(HiddenLayerBiases, VisibleLayer, Weights)
 
         positiveGradient = CastToArray([gradient(VisibleLayer[k,:], HiddenLayer) for k in range(self.RanksNumber)])
@@ -82,14 +79,20 @@ class RMBCutted():
         negativeGradient = CastToArray([gradient(VisibleLayer[k,:], HiddenLayer) for k in range(self.RanksNumber)])
 
         #updating
-        MomentumTable = self.momentum * MomentumTable + self.LearningRate * (positiveGradient - negativeGradient - self.decay * Weights)
+        MomentumTable = self.momentum * MomentumTable + self.LearningRate * (self.GradientsWeights / self.GradientsWeightsCounter - self.decay * Weights)
         Weights += MomentumTable
+        HiddenLayerBiases += self.momentum * HiddenLayerBiases + self.LearningRate*(HiddenData - HiddenLayer - self.decay * HiddenLayerBiases)
+        VisibleLayerBiases += self.momentum * HiddenLayerBiases + self.LearningRate*(HiddenData - HiddenLayer - self.decay * HiddenLayerBiases)
+
+    #def WeightsUpdate(self):
+    #    MomentumTable = self.MomentumTable[:,:,VVector]
+    #    MomentumTable = self.momentum * MomentumTable + self.LearningRate * (self.GradientsWeights / self.GradientsWeightsCounter - self.decay * Weights)
 
         self.GlobalWeights[:,:,VVector] = Weights
-        self.HiddenLayerBiases += self.LearningRate*(HiddenData - HiddenLayer)
-        VisibleLayerBiases += self.LearningRate*(VisibleData - VisibleLayer)
         self.GlobalVisibleLayerBiases[:,VVector] = VisibleLayerBiases
-        self.GradientsWeights[:,:,VVector] += self.LearningRate*(positiveGradient - negativeGradient)
+        self.GlobalHiddenLayerBiases = HiddenLayerBiases
+
+        self.GradientsWeights[:,:,VVector] += positiveGradient - negativeGradient
         self.GradientsHiddenLayerBiases += self.LearningRate*(HiddenData - HiddenLayer)
         self.GradientsVisibleLayerBiases[:,VVector] += self.LearningRate*(VisibleData - VisibleLayer)
 
