@@ -40,7 +40,6 @@ class RMB():
         return (product/product.sum(1)).reshape(self.RanksNumber,self.ArtistsNumber)                #keep calm and pray it work
 
     def learn(self, V = None, T = 1, showLikelihood = False):
-        #TODO try learning with erasing visible states
         gradient = lambda v,h: Multiply(v, h.T)
 
         self.VisibleLayer = VisibleData = V

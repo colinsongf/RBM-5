@@ -9,7 +9,7 @@ from RBM import RMB
 from RBMCutted import RMBCutted
 import numpy as np
 import cProfile, pstats, io
-
+from threading import Thread
 
 
 def SimpleTest1(times):
@@ -85,10 +85,10 @@ def TimeTest(miniBatchSize = 100, epoch = 1):
             for j in range(miniBatchSize):
                 V  = DataLoaderReal.getVisibleData()
                 if j == miniBatchSize - 1:
-                    likelihood = 1 - RBMReal.learn(V, showLikelihood = True)
+                    likelihood = 1 - RBMReal.learn(V,T = ceil(i/3), showLikelihood = True)
                     print("\tEpoch {0} Likelihood {1:0.5f}".format(i, likelihood))
                 else:
-                    RBMReal.learn(V)
+                    RBMReal.learn(V, T = ceil(i/3))
     except:
         RBMReal.saveRBM()
         print("Exception! File saved at epoch {0} user {1}".format(i,j))
@@ -109,19 +109,22 @@ def TimeTestCutted(miniBatchSize = 100, epoch = 1):
     DataLoaderReal = CuttedDataLoader(miniBatchesFolder = "TestDataCutted\\", epochsNumber = epoch)
     startTime = time();
     try:
+        threads = []
         for i in range(epoch):
             for j in range(miniBatchSize):
                 VVector, V  = DataLoaderReal.getVisibleData()
-                if j == miniBatchSize - 1:
-                    likelihood = 1 - RBMReal.learn(VVector, V, T = ceil(i/10),showLikelihood = True)
-                    print("\tEpoch {0} Likelihood {1:0.5f}".format(i, likelihood))
-                else:
-                    RBMReal.learn(VVector, V, T = ceil(i/10))
+                t = Thread(target = RBMReal.learn, args = (VVector, V))
+                t.start()
+                threads.append(t)
+                # thread.join()
+                #RBMReal.learn(VVector, V)
+        for t in threads:
+            t.join()
     except:
         RBMReal.saveRBM()
         print("Exception! File saved at epoch {0} user {1}".format(i,j))
         raise
-    endTime = time();
+    endTime = time()
 
     learningTime = endTime - startTime
 
@@ -165,26 +168,26 @@ def ProfileTestCutted(miniBatchSize = 100, epoch = 1):
     ps.print_stats()
     print(s.getvalue())
 
-print(("-----{0}-----").format("Simple test No. 1"))
-SimpleTest1(10)
-SimpleTest1(100)
-SimpleTest1(1000)
-
-print(("-----{0}-----").format("Simple test No. 2"))
-SimpleTest2(10)
-SimpleTest2(50)
-SimpleTest2(100)
-SimpleTest2(1000)
+# print(("-----{0}-----").format("Simple test No. 1"))
+# SimpleTest1(10)
+# SimpleTest1(100)
+# SimpleTest1(1000)
+#
+# print(("-----{0}-----").format("Simple test No. 2"))
+# SimpleTest2(10)
+# SimpleTest2(50)
+# SimpleTest2(100)
+# SimpleTest2(1000)
 
 
 print(("-----{0}-----").format("Time Test Cutted RBM on Real data"))
-TimeTestCutted(miniBatchSize=100, epoch=50)
+TimeTestCutted(miniBatchSize=100, epoch=1)
 
 print(("-----{0}-----").format("Time Test on Real data"))
-TimeTest(miniBatchSize=100, epoch=50) # if you have about 1 hour free
+# TimeTest(miniBatchSize=10, epoch=15) # if you have about 1 hour free
 
 print(("-----{0}-----").format("Profile Test Cutted RBM on Real data"))
-ProfileTestCutted(miniBatchSize=100, epoch=50)
+# ProfileTestCutted(miniBatchSize=100, epoch=50)
 
 print(("-----{0}-----").format("Profile Test on Real data"))
-ProfileTest(miniBatchSize=100, epoch=50) # if you have about 1 hour free
+# ProfileTest(miniBatchSize=100, epoch=1) # if you have about 1 hour free

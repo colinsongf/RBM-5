@@ -4,6 +4,8 @@ import numpy as np
 from scipy.special import expit as Sigmoid
 from numpy import multiply as Multiply
 from numpy import exp as Exponent
+from itertools import starmap
+from operator import mul
 
 CastGeneratorToArray = lambda x: np.fromiter((x), np.float64)
 CastToArray = lambda x: np.array((x), np.float64)
@@ -18,7 +20,7 @@ class RMBCutted():
         self.Ranks = np.arange(ranksNumber, dtype=np.float64).reshape(ranksNumber,1)
 
         self.HiddenLayer = np.zeros((1, hiddenLayerSize), dtype=np.float64)                     #h
-        self.VisibleLayer = np.ones((ranksNumber, artistsNumber), dtype=np.float64)             #V
+        self.VisibleLayer = np.zeros((ranksNumber, artistsNumber), dtype=np.float64)             #V
 
         self.HiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)               #A
         self.VisibleLayerBiases = None
@@ -27,49 +29,53 @@ class RMBCutted():
         self.GlobalVisibleLayerBiases = np.random.normal(0.01, 0.01, (ranksNumber, artistsNumber))    #B  #TODO the proportion of training vectors in which unit i is on
         self.GlobalWeights = np.random.normal(0, 0.01, (ranksNumber, hiddenLayerSize, artistsNumber)) #W
 
-    def computeProbabilityTheHiddenStates(self):
+    def computeProbabilityTheHiddenStates(self, HiddenLayerBiases, VisibleLayer, Weights):
         # Eq. 2
-        expressionInsideTheParentheses = np.vectorize(lambda j: self.HiddenLayerBiases[0,j] + (Multiply(self.VisibleLayer, self.Weights[:,j])).sum())
+        expressionInsideTheParentheses = np.vectorize(lambda j: HiddenLayerBiases[0,j] + (Multiply(VisibleLayer, Weights[:,j])).sum())
         return Sigmoid(expressionInsideTheParentheses(np.arange(self.HiddenLayerSize)))
 
-    def computeUpdateTheHiddenStates(self):
-        probabilities = self.computeProbabilityTheHiddenStates()
+    def computeUpdateTheHiddenStates(self, HiddenLayerBiases, VisibleLayer, Weights):
+        probabilities = self.computeProbabilityTheHiddenStates(HiddenLayerBiases, VisibleLayer, Weights)
         return np.random.binomial(1,probabilities, size=(1,self.HiddenLayerSize))                   #draw a hidden feature
 
-    def computeUpdateTheVisibleStates(self):
+    def computeUpdateTheVisibleStates(self, VisibleLayerBiases, HiddenLayer, Weights, ArtistsNumber):
         # Eq. 1
-        product = Exponent(self.VisibleLayerBiases+np.dot(self.HiddenLayer,self.Weights))           #σ(B+h·W)
-        return (product/product.sum(1)).reshape(self.RanksNumber,self.ArtistsNumber)                #keep calm and pray it work
+        product = Exponent(VisibleLayerBiases+np.dot(HiddenLayer,Weights))                          #σ(B+h·W)
+        return (product/product.sum(1)).reshape(self.RanksNumber,ArtistsNumber)                #keep calm and pray it work
 
     def learn(self, VVector = None, V = None, T = 1, showLikelihood = False):
         #TODO try learning with erasing visible states
         gradient = lambda v,h: Multiply(v, h.T)
 
 
-        self.Weights = self.GlobalWeights[:,:,VVector]
-        self.VisibleLayerBiases = self.GlobalVisibleLayerBiases[:,VVector]
+        Weights = self.GlobalWeights[:,:,VVector]
+        VisibleLayerBiases = self.GlobalVisibleLayerBiases[:,VVector]
 
-        self.ArtistsNumber = len(VVector)
-        self.VisibleLayer = VisibleData = V
-        self.HiddenLayer = HiddenData = self.computeUpdateTheHiddenStates()
+        ArtistsNumber = len(VVector)
+        VisibleLayer = VisibleData = V
 
-        positiveGradient = CastToArray([gradient(self.VisibleLayer[k,:], self.HiddenLayer) for k in range(self.RanksNumber)])
+        HiddenLayerBiases = self.HiddenLayerBiases
 
-        for i in range(T):
-            self.VisibleLayer = self.computeUpdateTheVisibleStates()
-            self.HiddenLayer = self.computeUpdateTheHiddenStates()
+        HiddenLayer = HiddenData = self.computeUpdateTheHiddenStates(HiddenLayerBiases, VisibleLayer, Weights)
 
-        negativeGradient = CastToArray([gradient(self.VisibleLayer[k,:], self.HiddenLayer) for k in range(self.RanksNumber)])
+        positiveGradient = CastToArray([gradient(VisibleLayer[k,:], HiddenLayer) for k in range(self.RanksNumber)])
+
+        # for i in range(T):
+        VisibleLayer = self.computeUpdateTheVisibleStates(VisibleLayerBiases, HiddenLayer, Weights, ArtistsNumber)
+        HiddenLayer = self.computeUpdateTheHiddenStates(HiddenLayerBiases, VisibleLayer, Weights)
+
+        negativeGradient = CastToArray([gradient(VisibleLayer[k,:], HiddenLayer) for k in range(self.RanksNumber)])
 
         #updating
-        self.Weights += self.LearningRate*(positiveGradient - negativeGradient)
-        self.GlobalWeights[:,:,VVector] = self.Weights
-        self.HiddenLayerBiases += self.LearningRate*(HiddenData - self.HiddenLayer)
-        self.VisibleLayerBiases += self.LearningRate*(VisibleData - self.VisibleLayer)
-        self.GlobalVisibleLayerBiases[:,VVector] = self.VisibleLayerBiases
-        if showLikelihood:
-            rsm = (V-self.VisibleLayer)
-            return np.mean(np.multiply(rsm,rsm))
+        Weights += self.LearningRate*(positiveGradient - negativeGradient)
+        self.GlobalWeights[:,:,VVector] = Weights
+        self.HiddenLayerBiases += self.LearningRate*(HiddenData - HiddenLayer)
+        VisibleLayerBiases += self.LearningRate*(VisibleData - VisibleLayer)
+        self.GlobalVisibleLayerBiases[:,VVector] = VisibleLayerBiases
+        # if showLikelihood:
+        #     rsm = (V-self.VisibleLayer)
+        #     return np.mean(np.multiply(rsm,rsm))
+        self.VisibleLayer = np.zeros((self.RanksNumber, self.ArtistsNumber), dtype=np.float64)
 
     def prediction(self, V = None):
         self.VisibleLayer = V
@@ -104,7 +110,7 @@ class RMBCutted():
 
 def loadRBM(file):
     RBMFile = np.load(file)
-    loadedRBM = RMB()
+    loadedRBM = RMBCutted()
     loadedRBM.ArtistsNumber = RBMFile['ArtistsNumber']
     loadedRBM.RanksNumber = RBMFile['RanksNumber']
     loadedRBM.HiddenLayerSize = RBMFile['HiddenLayerSize']
@@ -115,4 +121,3 @@ def loadRBM(file):
     loadedRBM.VisibleLayerBiases = RBMFile['VisibleLayerBiases']
     loadedRBM.Weights = RBMFile['Weights']
     return loadedRBM
-
