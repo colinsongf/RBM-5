@@ -140,6 +140,7 @@ def TimeTestCuttedParallely(miniBatchSize = 100, epoch = 1):
         threads[i].start()
     for i in range(10):
         threads[i].join()
+    RBM.Upadte()
     endTime = time()
 
     learningTime = endTime - startTime

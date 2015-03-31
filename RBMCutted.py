@@ -26,6 +26,7 @@ class RMBCutted():
         self.VisibleLayerBiases = None
         self.Weights = None
 
+        #Synchronizowane miedzy watkiami
         self.GradientsWeights = np.zeros((ranksNumber, hiddenLayerSize, artistsNumber))
         self.GradientsHiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)
         self.GradientsVisibleLayerBiases = np.zeros((ranksNumber, artistsNumber))
@@ -33,6 +34,7 @@ class RMBCutted():
         self.GradientsWeightsCounter = np.zeros((ranksNumber, hiddenLayerSize, artistsNumber), dtype=np.int)
         self.GradientsHiddenLayerBiasesCounter = np.zeros((1, hiddenLayerSize), dtype=np.int)
         self.GradientsVisibleLayerBiasesCounter = np.zeros((ranksNumber, artistsNumber), dtype=np.int)
+        #Konice Synchronizowane miedzy watkiami
 
         self.GlobalVisibleLayerBiases = np.random.normal(0.01, 0.01, (ranksNumber, artistsNumber))    #B  #TODO the proportion of training vectors in which unit i is on
         self.GlobalWeights = np.random.normal(0, 0.01, (ranksNumber, hiddenLayerSize, artistsNumber)) #W
@@ -93,6 +95,7 @@ class RMBCutted():
         #     rsm = (V-self.VisibleLayer)
         #     return np.mean(np.multiply(rsm,rsm))
 
+    #fun updatu wag i biasow
 
     def prediction(self, V = None):
         self.VisibleLayer = V
