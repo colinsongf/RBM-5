@@ -94,6 +94,7 @@ class CuttedDataLoader():
         self.currentUserInCurrentMiniBatch = 0
         self.currentEpochNumber = 0
         self.currentMiniBatchSize = len(self.currentMiniBatch)
+        self.visibleLayer.clear()
 
         for user in range(self.currentMiniBatchSize):
             userHistory =  self.currentMiniBatch[user]
@@ -108,7 +109,6 @@ class CuttedDataLoader():
         self.currentUserInCurrentMiniBatch += 1
         if self.currentUserInCurrentMiniBatch  == self.currentMiniBatchSize:
             if self.currentEpochNumber == self.EpochsNumber:
-                print("Next Mini Batch")
                 self.loadNextMiniBatch()
             else:
                 self.currentUserInCurrentMiniBatch = 0

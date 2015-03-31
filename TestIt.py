@@ -103,10 +103,11 @@ def TimeTest(miniBatchSize = 100, epoch = 1):
     Learning Time: {2:0.2f} sec\t
     """.format(miniBatchSize, epoch, learningTime))
 
-def TimeTestCutted(miniBatchSize = 100, epoch = 1):
-    RBMReal = RMBCutted(17765, 4, 100)
+def TimeTestCutted(miniBatchSize = 100, epoch = 1, startFrom = 0, RBMReal = None, printTime = True):
+    if RBMReal == None:
+        RBMReal = RMBCutted(17765, 4, 100)
 
-    DataLoaderReal = CuttedDataLoader(miniBatchesFolder = "TestDataCutted\\", epochsNumber = epoch, ranksNumber = 4)
+    DataLoaderReal = CuttedDataLoader(miniBatchesFolder = "TestDataCutted\\", epochsNumber = epoch, ranksNumber = 4, startFromMiniBatch = startFrom)
     startTime = time();
     try:
         for i in range(epoch):
@@ -120,27 +121,28 @@ def TimeTestCutted(miniBatchSize = 100, epoch = 1):
     endTime = time()
 
     learningTime = endTime - startTime
-
-    print("""
-    Mini Batch size: {0}\t
-    Epochs: {1}\t
-    Learning Time: {2:0.2f} sec\t
-    """.format(miniBatchSize, epoch, learningTime))
+    if printTime:
+        print("""
+        Mini Batch size: {0}\t
+        Epochs: {1}\t
+        Learning Time: {2:0.2f} sec\t
+        """.format(miniBatchSize, epoch, learningTime))
 
 def TimeTestCuttedParallely(miniBatchSize = 100, epoch = 1):
-    RBMReal = RMBCutted(17765, 5, 100)
+    RBMLIST = []
+    threads = []
+    for i in range(10):
+        RBMLIST.append(RMBCutted(17765, 4, 100))
 
-    DataLoaderReal = CuttedDataLoader(miniBatchesFolder = "TestDataCutted\\", epochsNumber = epoch)
-    startTime = time();
-    try:
-        for i in range(epoch):
-            for j in range(miniBatchSize):
-                VVector, V  = DataLoaderReal.getVisibleData()
-                RBMReal.learn(VVector, V)
-    except:
-        RBMReal.saveRBM()
-        print("Exception! File saved at epoch {0} user {1}".format(i,j))
-        raise
+
+    startTime = time()
+    for i in range(10):
+        threads.append(Thread(target=TimeTestCutted, args = (miniBatchSize, epoch, i, RBMLIST[i], False)))
+
+    for i in range(10):
+        threads[i].start()
+    for i in range(10):
+        threads[i].join()
     endTime = time()
 
     learningTime = endTime - startTime
@@ -198,7 +200,10 @@ def ProfileTestCutted(miniBatchSize = 100, epoch = 1):
 
 
 print(("-----{0}-----").format("Time Test Cutted RBM on Real data"))
-TimeTestCutted(miniBatchSize=100, epoch=50)
+TimeTestCutted(miniBatchSize=1000, epoch=50)
+
+print(("-----{0}-----").format("Time Test Cutted Parallel RBM on Real data"))
+TimeTestCuttedParallely(miniBatchSize=100, epoch=50)
 
 print(("-----{0}-----").format("Time Test on Real data"))
 # TimeTest(miniBatchSize=10, epoch=15) # if you have about 1 hour free
