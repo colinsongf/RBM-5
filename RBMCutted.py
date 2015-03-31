@@ -11,11 +11,13 @@ CastGeneratorToArray = lambda x: np.fromiter((x), np.float64)
 CastToArray = lambda x: np.array((x), np.float64)
 
 class RMBCutted():
-    def __init__(self, artistsNumber = 5, ranksNumber = 2, hiddenLayerSize = 2, learningRate = 0.1):
+    def __init__(self, artistsNumber = 5, ranksNumber = 2, hiddenLayerSize = 2, learningRate = 0.1, momentum = 0.9, decay = 0.001):
         self.ArtistsNumber = artistsNumber                                                      #M
         self.RanksNumber = ranksNumber                                                          #K
         self.HiddenLayerSize = hiddenLayerSize                                                  #F
         self.LearningRate = np.float64(learningRate)
+        self.momentum = momentum
+        self.decay = decay
 
         self.Ranks = np.arange(ranksNumber, dtype=np.float64).reshape(ranksNumber,1)
 
@@ -25,6 +27,7 @@ class RMBCutted():
         self.HiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)               #A
         self.VisibleLayerBiases = None
         self.Weights = None
+        self.MomentumTable = np.zeros((ranksNumber, hiddenLayerSize, artistsNumber), dtype=np.float64)
 
         #Synchronizowane miedzy watkiami
         self.GradientsWeights = np.zeros((ranksNumber, hiddenLayerSize, artistsNumber))
@@ -59,6 +62,8 @@ class RMBCutted():
 
 
         Weights = self.GlobalWeights[:,:,VVector]
+        MomentumTable = self.MomentumTable[:,:,VVector]
+
         VisibleLayerBiases = self.GlobalVisibleLayerBiases[:,VVector]
 
         ArtistsNumber = len(VVector)
@@ -77,6 +82,13 @@ class RMBCutted():
         negativeGradient = CastToArray([gradient(VisibleLayer[k,:], HiddenLayer) for k in range(self.RanksNumber)])
 
         #updating
+        MomentumTable = self.momentum * MomentumTable + self.LearningRate * (positiveGradient - negativeGradient - self.decay * Weights)
+        Weights += MomentumTable
+
+        self.GlobalWeights[:,:,VVector] = Weights
+        self.HiddenLayerBiases += self.LearningRate*(HiddenData - HiddenLayer)
+        VisibleLayerBiases += self.LearningRate*(VisibleData - VisibleLayer)
+        self.GlobalVisibleLayerBiases[:,VVector] = VisibleLayerBiases
         self.GradientsWeights[:,:,VVector] += self.LearningRate*(positiveGradient - negativeGradient)
         self.GradientsHiddenLayerBiases += self.LearningRate*(HiddenData - HiddenLayer)
         self.GradientsVisibleLayerBiases[:,VVector] += self.LearningRate*(VisibleData - VisibleLayer)
