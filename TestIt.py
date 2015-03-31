@@ -104,22 +104,39 @@ def TimeTest(miniBatchSize = 100, epoch = 1):
     """.format(miniBatchSize, epoch, learningTime))
 
 def TimeTestCutted(miniBatchSize = 100, epoch = 1):
+    RBMReal = RMBCutted(17765, 4, 100)
+
+    DataLoaderReal = CuttedDataLoader(miniBatchesFolder = "TestDataCutted\\", epochsNumber = epoch, ranksNumber = 4)
+    startTime = time();
+    try:
+        for i in range(epoch):
+            for j in range(miniBatchSize):
+                VVector, V  = DataLoaderReal.getVisibleData()
+                RBMReal.learn(VVector, V)
+    except:
+        RBMReal.saveRBM()
+        print("Exception! File saved at epoch {0} user {1}".format(i,j))
+        raise
+    endTime = time()
+
+    learningTime = endTime - startTime
+
+    print("""
+    Mini Batch size: {0}\t
+    Epochs: {1}\t
+    Learning Time: {2:0.2f} sec\t
+    """.format(miniBatchSize, epoch, learningTime))
+
+def TimeTestCuttedParallely(miniBatchSize = 100, epoch = 1):
     RBMReal = RMBCutted(17765, 5, 100)
 
     DataLoaderReal = CuttedDataLoader(miniBatchesFolder = "TestDataCutted\\", epochsNumber = epoch)
     startTime = time();
     try:
-        threads = []
         for i in range(epoch):
             for j in range(miniBatchSize):
                 VVector, V  = DataLoaderReal.getVisibleData()
-                t = Thread(target = RBMReal.learn, args = (VVector, V))
-                t.start()
-                threads.append(t)
-                # thread.join()
-                #RBMReal.learn(VVector, V)
-        for t in threads:
-            t.join()
+                RBMReal.learn(VVector, V)
     except:
         RBMReal.saveRBM()
         print("Exception! File saved at epoch {0} user {1}".format(i,j))
@@ -181,7 +198,7 @@ def ProfileTestCutted(miniBatchSize = 100, epoch = 1):
 
 
 print(("-----{0}-----").format("Time Test Cutted RBM on Real data"))
-TimeTestCutted(miniBatchSize=100, epoch=1)
+TimeTestCutted(miniBatchSize=100, epoch=50)
 
 print(("-----{0}-----").format("Time Test on Real data"))
 # TimeTest(miniBatchSize=10, epoch=15) # if you have about 1 hour free

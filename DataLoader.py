@@ -100,14 +100,15 @@ class CuttedDataLoader():
             tmpV = np.zeros((self.ranksNumber, len(userHistory)))
             for index in range(len(userHistory)):
                 # print(userHistory[index], len(userHistorys))
-                tmpV[userHistory[index]][index] = 1
+                tmpV[userHistory[index] - 1][index] = 1
             self.visibleLayer.append(tmpV)
 
 
     def getNextUser(self):
         self.currentUserInCurrentMiniBatch += 1
-        if self.currentUserInCurrentMiniBatch == self.currentMiniBatchSize:
-            if self.currentEpochNumber + 1 == self.EpochsNumber:
+        if self.currentUserInCurrentMiniBatch  == self.currentMiniBatchSize:
+            if self.currentEpochNumber == self.EpochsNumber:
+                print("Next Mini Batch")
                 self.loadNextMiniBatch()
             else:
                 self.currentUserInCurrentMiniBatch = 0

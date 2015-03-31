@@ -20,11 +20,19 @@ class RMBCutted():
         self.Ranks = np.arange(ranksNumber, dtype=np.float64).reshape(ranksNumber,1)
 
         self.HiddenLayer = np.zeros((1, hiddenLayerSize), dtype=np.float64)                     #h
-        self.VisibleLayer = np.zeros((ranksNumber, artistsNumber), dtype=np.float64)             #V
+        self.VisibleLayer = np.zeros((ranksNumber, artistsNumber), dtype=np.float64)            #V
 
         self.HiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)               #A
         self.VisibleLayerBiases = None
         self.Weights = None
+
+        self.GradientsWeights = np.zeros((ranksNumber, hiddenLayerSize, artistsNumber))
+        self.GradientsHiddenLayerBiases = np.zeros((1, hiddenLayerSize), dtype=np.float64)
+        self.GradientsVisibleLayerBiases = np.zeros((ranksNumber, artistsNumber))
+
+        self.GradientsWeightsCounter = np.zeros((ranksNumber, hiddenLayerSize, artistsNumber), dtype=np.int)
+        self.GradientsHiddenLayerBiasesCounter = np.zeros((1, hiddenLayerSize), dtype=np.int)
+        self.GradientsVisibleLayerBiasesCounter = np.zeros((ranksNumber, artistsNumber), dtype=np.int)
 
         self.GlobalVisibleLayerBiases = np.random.normal(0.01, 0.01, (ranksNumber, artistsNumber))    #B  #TODO the proportion of training vectors in which unit i is on
         self.GlobalWeights = np.random.normal(0, 0.01, (ranksNumber, hiddenLayerSize, artistsNumber)) #W
@@ -67,15 +75,24 @@ class RMBCutted():
         negativeGradient = CastToArray([gradient(VisibleLayer[k,:], HiddenLayer) for k in range(self.RanksNumber)])
 
         #updating
-        Weights += self.LearningRate*(positiveGradient - negativeGradient)
-        self.GlobalWeights[:,:,VVector] = Weights
-        self.HiddenLayerBiases += self.LearningRate*(HiddenData - HiddenLayer)
-        VisibleLayerBiases += self.LearningRate*(VisibleData - VisibleLayer)
-        self.GlobalVisibleLayerBiases[:,VVector] = VisibleLayerBiases
+        self.GradientsWeights[:,:,VVector] += self.LearningRate*(positiveGradient - negativeGradient)
+        self.GradientsHiddenLayerBiases += self.LearningRate*(HiddenData - HiddenLayer)
+        self.GradientsVisibleLayerBiases[:,VVector] += self.LearningRate*(VisibleData - VisibleLayer)
+
+        # #updatingCunters
+        self.GradientsWeightsCounter[:,:,VVector] += 1
+        self.GradientsHiddenLayerBiasesCounter += 1
+        self.GradientsVisibleLayerBiasesCounter[:,VVector] += 1
+
+
+
+        #for sure
+        self.VisibleLayer = np.zeros((self.RanksNumber, self.ArtistsNumber), dtype=np.float64)
+
         # if showLikelihood:
         #     rsm = (V-self.VisibleLayer)
         #     return np.mean(np.multiply(rsm,rsm))
-        self.VisibleLayer = np.zeros((self.RanksNumber, self.ArtistsNumber), dtype=np.float64)
+
 
     def prediction(self, V = None):
         self.VisibleLayer = V
