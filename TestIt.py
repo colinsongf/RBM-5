@@ -140,7 +140,7 @@ def TimeTestCuttedParallely(miniBatchSize = 100, epoch = 1):
         threads[i].start()
     for i in range(10):
         threads[i].join()
-    RBM.Upadte()
+    #RBM.Upadte()  not now
     endTime = time()
 
     learningTime = endTime - startTime
@@ -201,13 +201,13 @@ print(("-----{0}-----").format("Time Test Cutted RBM on Real data"))
 # TimeTestCutted(miniBatchSize=1000, epoch=50)
 
 print(("-----{0}-----").format("Time Test Cutted Parallel RBM on Real data"))
-TimeTestCuttedParallely(miniBatchSize=100, epoch=50)
+#TimeTestCuttedParallely(miniBatchSize=100, epoch=1)
 
 print(("-----{0}-----").format("Time Test on Real data"))
 # TimeTest(miniBatchSize=10, epoch=15) # if you have about 1 hour free
 
 print(("-----{0}-----").format("Profile Test Cutted RBM on Real data"))
-# ProfileTestCutted(miniBatchSize=100, epoch=50)
+ProfileTestCutted(miniBatchSize=100, epoch=50)
 
 print(("-----{0}-----").format("Profile Test on Real data"))
 # ProfileTest(miniBatchSize=100, epoch=1) # if you have about 1 hour free

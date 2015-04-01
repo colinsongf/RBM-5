@@ -1,3 +1,5 @@
+import threading
+
 __author__ = 'Olek'
 
 import numpy as np
@@ -64,7 +66,9 @@ class RMBCutted():
         Weights = self.GlobalWeights[:,:,VVector]
         MomentumTable = self.MomentumTable[:,:,VVector]
         VisibleLayerBiases = self.GlobalVisibleLayerBiases[:,VVector]
-        HiddenLayerBiases = self.HiddenLayerBiases
+        VisibleLayerBiasesInc = VisibleLayerBiases * 0
+        HiddenLayerBiases  = self.HiddenLayerBiases
+        HiddenLayerBiasesInc = self.HiddenLayerBiases # already zero
 
         ArtistsNumber = len(VVector)
         VisibleLayer = VisibleData = V
@@ -78,30 +82,41 @@ class RMBCutted():
 
         negativeGradient = CastToArray([gradient(VisibleLayer[k,:], HiddenLayer) for k in range(self.RanksNumber)])
 
+
         #updating
-        MomentumTable = self.momentum * MomentumTable + self.LearningRate * (self.GradientsWeights / self.GradientsWeightsCounter - self.decay * Weights)
-        Weights += MomentumTable
-        HiddenLayerBiases += self.momentum * HiddenLayerBiases + self.LearningRate*(HiddenData - HiddenLayer - self.decay * HiddenLayerBiases)
-        VisibleLayerBiases += self.momentum * HiddenLayerBiases + self.LearningRate*(HiddenData - HiddenLayer - self.decay * HiddenLayerBiases)
+        MomentumTable = self.momentum * MomentumTable + self.LearningRate * (positiveGradient - negativeGradient - self.decay * Weights)
+        HiddenLayerBiasesInc = self.momentum * HiddenLayerBiasesInc + self.LearningRate*(HiddenData - HiddenLayer - self.decay * HiddenLayerBiases)
+        VisibleLayerBiasesInc = self.momentum * VisibleLayerBiasesInc + self.LearningRate*(VisibleData - VisibleLayer - self.decay * VisibleLayerBiases)
+        #Weights += MomentumTable
+        #HiddenLayerBiases += HiddenLayerBiasesInc
+        #VisibleLayerBiases += VisibleLayerBiasesInc
 
-    #def WeightsUpdate(self):
-    #    MomentumTable = self.MomentumTable[:,:,VVector]
-    #    MomentumTable = self.momentum * MomentumTable + self.LearningRate * (self.GradientsWeights / self.GradientsWeightsCounter - self.decay * Weights)
+        lock = threading.Lock() # .RLock() ?
+        lock.acquire()
+        try:
+            self.GradientsWeights[:,:,VVector] += MomentumTable
+            self.GradientsWeightsCounter[:,:,VVector] += 1
+        except:
+            raise
+        finally:
+            lock.release()
+        lock.acquire()
+        try:
+            self.GradientsHiddenLayerBiases += HiddenLayerBiasesInc
+            self.GradientsHiddenLayerBiasesCounter += 1
+        except:
+            raise
+        finally:
+            lock.release()
 
-        self.GlobalWeights[:,:,VVector] = Weights
-        self.GlobalVisibleLayerBiases[:,VVector] = VisibleLayerBiases
-        self.GlobalHiddenLayerBiases = HiddenLayerBiases
-
-        self.GradientsWeights[:,:,VVector] += positiveGradient - negativeGradient
-        self.GradientsHiddenLayerBiases += self.LearningRate*(HiddenData - HiddenLayer)
-        self.GradientsVisibleLayerBiases[:,VVector] += self.LearningRate*(VisibleData - VisibleLayer)
-
-        # #updatingCunters
-        self.GradientsWeightsCounter[:,:,VVector] += 1
-        self.GradientsHiddenLayerBiasesCounter += 1
-        self.GradientsVisibleLayerBiasesCounter[:,VVector] += 1
-
-
+        lock.acquire()
+        try:
+            self.GradientsVisibleLayerBiases[:,VVector] += VisibleLayerBiasesInc
+            self.GradientsVisibleLayerBiasesCounter[:,VVector] += 1
+        except:
+            raise
+        finally:
+            lock.release()
 
         #for sure
         self.VisibleLayer = np.zeros((self.RanksNumber, self.ArtistsNumber), dtype=np.float64)
@@ -111,6 +126,29 @@ class RMBCutted():
         #     return np.mean(np.multiply(rsm,rsm))
 
     #fun updatu wag i biasow
+
+    def update(self):
+        x = np.where(self.GradientsWeightsCounter >= 100)
+        #print(x[0].size)
+        #print(x)
+        if(x[0].size != 0):
+            #print(self.GradientsWeights[x].size)
+            print("yolo")
+            self.GlobalWeights[x] += self.GradientsWeightsCounter[x] / 100
+            self.GradientsWeightsCounter[x] = 0
+            self.GradientsWeights[x] = 0
+
+        x = np.where(self.GradientsHiddenLayerBiasesCounter >= 100)
+        if (x[0].size != 0):
+            self.GlobalHiddenLayerBiases[x] += self.GradientsHiddenLayerBiases[x] / 100
+            self.GradientsHiddenLayerBiasesCounter[x] = 0
+            self.GradientsHiddenLayerBiases[x] = 0
+
+        x = np.where(self.GradientsVisibleLayerBiasesCounter >= 100)
+        if (x[0].size != 0):
+            self.GlobalVisibleLayerBiases[x] += self.GradientsVisibleLayerBiases[x] / 100
+            self.GradientsVisibleLayerBiasesCounter[x] = 0
+            self.GradientsVisibleLayerBiases[x] = 0
 
     def prediction(self, V = None):
         self.VisibleLayer = V
