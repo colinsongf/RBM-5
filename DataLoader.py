@@ -1,126 +1,112 @@
-__author__ = 'Olek'
+import datetime
+
+__author__ = 'Aleksander Surman'
+##################################################### USAGE #####################################################
+#                                                                                                               #
+# First Initialize Object!                                                                                       #
+#                                                                                                               #
+# For Training:                                                                                                 #
+#   StartNewTrainingMiniSet for Initialize new mini set                                                         #
+#       (iterate over number of users given in batchSizeForOneThread with thread number given in threadNumber,  #
+#           data in each thread are different)                                                                  #
+#   GiveVisibleLayerForTraining(N) return one user data for nth training thread                                 #
+#                                                                                                               #
+# For Validation:                                                                                               #
+#   GiveVisibleLayerForValidation return one user data for validation                                           #
+#                                                                                                               #
+# For Test:                                                                                                     #
+#   GiveVisibleLayerForTest return one user data for validation                                                 #
+#################################################################################################################
 
 import numpy as np
 
 class DataLoader():
-    def __init__(self, miniBatchesFolder = "F:\TrustMeIWillBeAnEngineer\RMB_Data\\", epochsNumber = 1, ranksNumber = 5, startFromMiniBatch = 0):
-        self.miniBatchesFolder = miniBatchesFolder
-        self.EpochsNumber = epochsNumber
-        self.ranksNumber = ranksNumber
 
-        self.currentMiniBatchNumber = startFromMiniBatch
+    def makeVisibleFromRanks(self, matrix, ranksNumber):
+        visibleLayer = []
+        for (indexes, ranks) in matrix: # data format (tuple of artist indexes, tuple of ranks)
+            Vtmp = np.zeros((ranksNumber, len(ranks)), dtype=np.float32)
+            for index in range(len(ranks)):
+                Vtmp[ranks[index]][index] = np.float32(1.0) # not sure whether should be row[index] - 1, because ranks are from 1
+            visibleLayer.append((indexes, Vtmp))
+        return visibleLayer
 
-        self.currentEpochNumber = 0
+    def __init__(self,
+                    trainingSetFile = "Data\TrainingSet.npy",
+                    validationSetFile = "Data\ValidationSet.npy",
+                    testSetFile = "Data\TestSet.npy",
+                    ranksNumber = 5,
+                    batchSizeForOneThread = 100,
+                    threadNumber = 10,
+                    verbose = False):
 
-        self.currentUserInCurrentMiniBatch = 0
+        def log(x):
+            if verbose:
+                print(x)
 
-        self.currentMiniBatch = None
-        self.visibleLayer = []
-        self.currentMiniBatchSize = 0
-        self.artistsNumber = 0
-
-        self.loadNextMiniBatch()
-
-        self.endData = False
-
-
-    def loadNextMiniBatch(self):
         try:
-            self.currentMiniBatch = np.load(self.miniBatchesFolder+"Data"+str(self.currentMiniBatchNumber).zfill(5)+".npy")
-        except IOError:
-            self.endData = True
-        self.artistsNumber = len(self.currentMiniBatch[0])
-        self.currentMiniBatchNumber += 1
-        self.currentUserInCurrentMiniBatch = 0
-        self.currentEpochNumber = 0
-        self.currentMiniBatchSize = len(self.currentMiniBatch)
 
-        for user in range(self.currentMiniBatchSize):
-            userHistory =  self.currentMiniBatch[user]
-            tmpV = np.zeros((self.ranksNumber, self.artistsNumber))
-            for index in range(len(userHistory)):
-                tmpV[userHistory[index]][index] = 1
-            self.visibleLayer.append(tmpV)
-
-
-    def getNextUser(self):
-        self.currentUserInCurrentMiniBatch += 1
-        if self.currentUserInCurrentMiniBatch == self.currentMiniBatchSize:
-            if self.currentEpochNumber + 1 == self.EpochsNumber:
-                self.loadNextMiniBatch()
-            else:
-                self.currentUserInCurrentMiniBatch = 0
-                self.currentEpochNumber += 1
-
-    def getVisibleData(self):
-        if self.endData:
-            raise NameError("End of training data")
-        V = self.visibleLayer[self.currentUserInCurrentMiniBatch]
-        self.getNextUser()
-        return V
+            log("Initializing data loader")
 
 
 
+            log("\t Loading training set")
+            self.trainingSet = np.load(trainingSetFile)
 
-class CuttedDataLoader():
-    def __init__(self, miniBatchesFolder = "F:\TrustMeIWillBeAnEngineer\RMB_DataForCutting\\", epochsNumber = 1, ranksNumber = 5, startFromMiniBatch = 0):
-        self.miniBatchesFolder = miniBatchesFolder
-        self.EpochsNumber = epochsNumber
-        self.ranksNumber = ranksNumber
+            log("\t Making Binary form from training set")
+            self.trainingSet = self.makeVisibleFromRanks(self.trainingSet, ranksNumber)
 
-        self.currentMiniBatchNumber = startFromMiniBatch
-
-        self.currentEpochNumber = 0
-
-        self.currentUserInCurrentMiniBatch = 0
-
-        self.currentMiniBatch = None
-        self.visibleLayer = []
-        self.currentMiniBatchSize = 0
-        self.artistsNumber = 0
-
-        self.loadNextMiniBatch()
-
-        self.endData = False
-
-
-    def loadNextMiniBatch(self):
-        try:
-            (self.VVector, self.currentMiniBatch) = np.load(self.miniBatchesFolder+"Data"+str(self.currentMiniBatchNumber).zfill(5)+".npy")
-        except IOError:
-            self.endData = True
-        self.artistsNumber = len(self.currentMiniBatch)
-        self.currentMiniBatchNumber += 1
-        self.currentUserInCurrentMiniBatch = 0
-        self.currentEpochNumber = 0
-        self.currentMiniBatchSize = len(self.currentMiniBatch)
-        self.visibleLayer.clear()
-
-        for user in range(self.currentMiniBatchSize):
-            userHistory =  self.currentMiniBatch[user]
-            tmpV = np.zeros((self.ranksNumber, len(userHistory)))
-            for index in range(len(userHistory)):
-                # print(userHistory[index], len(userHistorys))
-                tmpV[userHistory[index] - 1][index] = 1
-            self.visibleLayer.append(tmpV)
-
-
-    def getNextUser(self):
-        self.currentUserInCurrentMiniBatch += 1
-        if self.currentUserInCurrentMiniBatch  == self.currentMiniBatchSize:
-            if self.currentEpochNumber == self.EpochsNumber:
-                self.loadNextMiniBatch()
-            else:
-                self.currentUserInCurrentMiniBatch = 0
-                self.currentEpochNumber += 1
-
-    def getVisibleData(self):
-        if self.endData:
-            raise NameError("End of training data")
-        VVector = self.VVector[self.currentUserInCurrentMiniBatch]
-        V = self.visibleLayer[self.currentUserInCurrentMiniBatch]
-        self.getNextUser()
-        return VVector, V
+            self.trainingSetSize = len(self.trainingSet)
+            log("\t \t Done, Size: " + str(self.trainingSetSize))
 
 
 
+            log("\t Loading validation set")
+            self.validationSet = np.load(validationSetFile)
+
+            log("\t Making Binary form from validation set")
+            self.validationSet = self.makeVisibleFromRanks(self.validationSet, ranksNumber)
+
+            self.validationSetSize = len(self.validationSet)
+            log("\t \t Done, Size: " + str(self.validationSetSize))
+
+
+
+            log("\t Loading test set")
+            self.testSet = np.load(testSetFile)
+
+            log("\t Making Binary form from test set")
+            self.testSet = self.makeVisibleFromRanks(self.testSet, ranksNumber)
+
+            self.testSetSize = len(self.testSet)
+            log("\t \t Done, Size: " + str(self.testSetSize))
+
+
+            self.trainingMiniSetNumber = -1 # -1 is for start from 0
+            self.testSetCounter = -1        # -1 is for start from 0
+            self.validationSetCounter = -1  # -1 is for start from 0
+
+            self.batchSizeForOneThread = batchSizeForOneThread
+            self.threadNumber = threadNumber
+
+            log("Initialization successful")
+
+        except:
+            log("Initialization failed")
+            raise
+
+    def StartNewTrainingMiniSet(self):
+        self.trainingMiniSetNumber += 1
+        self.InThreadsCounter = [-1 + self.trainingMiniSetNumber * (self.threadNumber * self.batchSizeForOneThread) + i * self.batchSizeForOneThread for i in range(self.threadNumber)] # -1 is for start from 0
+
+    def GiveVisibleLayerForTraining(self, threadNumber):
+        self.InThreadsCounter[threadNumber] += 1
+        return self.trainingSet[self.InThreadsCounter[threadNumber]]
+
+    def GiveVisibleLayerForValidation(self):
+        self.validationSetCounter = (self.validationSetCounter + 1) % self.validationSetSize
+        return self.validationSet[self.validationSetCounter]
+
+    def GiveVisibleLayerForTest(self):
+        self.testSetCounter = (self.testSetCounter + 1) % self.testSetSize
+        return self.testSet[self.testSetCounter]
