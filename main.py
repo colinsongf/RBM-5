@@ -25,7 +25,7 @@ def computeRMSE(rbm = None, dataLoader = None, threadsNumber = 10, verbose = Fal
     errorsLock = threading.Lock()
 
     def threadJob(threadNumber):
-        for i in range(int(dataLoader.validationSetSize/threadNumber)):
+        for i in range(int(dataLoader.validationSetSize/threadsNumber)):
             (vVector, v, integerV) = dataLoader.GiveVisibleLayerForValidation(threadNumber)
             predictions = rbm.prediction((vVector, v), isValidation=True)
             with errorsLock:
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     wDecay = 0.001                  #
     updateFrequencyMAX = 300        #
                                     #
-    numberOfEpoch = 1               #
+    numberOfEpoch = 50              #
     #################################
 
     dataLoader = DataLoader(K=K, M=M, batchSizeForOneThread=batchSizeForOneThread, threadsNumber=threadsNumber, verbose=True)
