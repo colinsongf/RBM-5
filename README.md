@@ -4,4 +4,4 @@
 - numpy
 - scipy
 
-#####By Aleksander Surman
+#####By Aleksander Surman and Tomasz Wis

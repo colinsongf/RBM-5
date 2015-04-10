@@ -1,4 +1,4 @@
-__author__ = 'Aleksander Surman'
+__author__ = 'Aleksander Surman, Tomasz Wis'
 
 import threading
 from time import time
@@ -8,6 +8,14 @@ from RBM import RBM, loadRBM
 import numpy as np
 
 def computeRMSE(rbm = None, dataLoader = None, threadsNumber = 10, verbose = False):
+    """
+    Compute Root mean square error for RBM
+    :param rbm: RBM instance
+    :param dataLoader: data loader instance
+    :param threadsNumber: number of used threads
+    :param verbose: true enables logs
+    :return:
+    """
     startTime = time()
 
     dataLoader.StartNewValidationSet()
@@ -19,7 +27,7 @@ def computeRMSE(rbm = None, dataLoader = None, threadsNumber = 10, verbose = Fal
     def threadJob(threadNumber):
         for i in range(int(dataLoader.validationSetSize/threadNumber)):
             (vVector, v, integerV) = dataLoader.GiveVisibleLayerForValidation(threadNumber)
-            predictions = rbm.prediction((vVector, v), isValidation = True) # if isValidation = False take ~ 20 times more
+            predictions = rbm.prediction((vVector, v), isValidation=True)
             with errorsLock:
                 errors.append(predictions - integerV)
 
@@ -41,6 +49,16 @@ def computeRMSE(rbm = None, dataLoader = None, threadsNumber = 10, verbose = Fal
     return RMSE
 
 def learnOneEpoch(rbm = None, dataLoader = None, threadsNumber = 10, batchSizeForOneThread = 100, numberOfMiniSets = 319, verbose = False):
+    """
+    Trains all users from training set once
+    :param rbm: RBM instance
+    :param dataLoader: data loader instance
+    :param threadsNumber: number of used threads
+    :param batchSizeForOneThread: number of users trained by single thread at the time
+    :param numberOfMiniSets: number of set thread number times batch size in training set
+    :param verbose: true enables logs
+    :return:
+    """
     startTime = time()
     for setNumber in range(numberOfMiniSets):
         if setNumber + 1 == numberOfMiniSets:           # last case computing with 1 thread to reduce problem with division data onto many threads
@@ -86,22 +104,25 @@ def learnOneEpoch(rbm = None, dataLoader = None, threadsNumber = 10, batchSizeFo
         print("Epoch took: {0:0.5f} sec".format(endTime - startTime))
 
 if __name__ == "__main__":
+    #################################
+    #         configuration         #
+    #################################
+    threadsNumber = 10              #
+    batchSizeForOneThread = 100     #
+    M = 17765                       #
+    K = 5                           #
+    F = 100                         #
+    learningRate = 0.1              #
+    momentum = 0.9                  #
+    wDecay = 0.001                  #
+    updateFrequencyMAX = 300        #
+                                    #
+    numberOfEpoch = 1               #
+    #################################
 
-    #configuration
-    threadsNumber = 10
-    batchSizeForOneThread = 100
-    M = 17765
-    K = 5
-    F = 100
-    learningRate = 0.1
-    momentum = 0.9
-    wDecay = 0.001
-    updateFrequencyMAX = 300
+    dataLoader = DataLoader(K=K, M=M, batchSizeForOneThread=batchSizeForOneThread, threadsNumber=threadsNumber, verbose=True)
 
-    numberOfEpoch = 1
-
-    dataLoader = DataLoader(K = K, M = M, batchSizeForOneThread = batchSizeForOneThread, threadsNumber = threadsNumber, verbose = True)
-
+    # updateFrequency decides how often RMB updates global data
     whereUpdateMax = np.where(dataLoader.updateFrequency > updateFrequencyMAX)
     dataLoader.updateFrequency[whereUpdateMax] = updateFrequencyMAX
 

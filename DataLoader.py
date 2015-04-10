@@ -32,10 +32,10 @@ class DataLoader():
             counter = 0;
 
         visibleLayer = []
-        for (indexes, ranks) in matrix: # data format (tuple of artist indexes, tuple of ranks)
+        for (indexes, ranks) in matrix:  # data format (tuple of artist indexes, tuple of ranks)
             Vtmp = np.zeros((K, len(ranks)), dtype=np.float32)
             for index in range(len(ranks)):
-                Vtmp[ranks[index]][index] = np.float32(1.0) # not sure whether should be row[index] - 1, because ranks are from 1
+                Vtmp[ranks[index]][index] = np.float32(1.0)  # not sure whether should be row[index] - 1, because ranks are from 1
                 if generatevBiasesInitialization:
                     vBiasesInitialization[ranks[index]][indexes[index]] += 1
                     counter += 1
