@@ -80,9 +80,15 @@ class RBM():
 
         negativeGradient = CastToArray([gradient(v[k,:], h) for k in range(self.K)])
 
+        def uglyButWork(vData):
+            vDataToUpdateW = np.zeros((self.K, self.F, len(vVector)))
+            for i in range(self.F):
+                vDataToUpdateW[:,i] = vData
+            return vDataToUpdateW
+
         with self.wDeltaLock:
             self.wDelta[:,:,vVector] += positiveGradient - negativeGradient
-            self.wDeltaCounter[:,:,vVector] += 1 # TODO FIX this updating only element not whole column
+            self.wDeltaCounter[:,:,vVector] += uglyButWork(vData)
 
         with self.hBiasesDeltaLock:
             self.hBiasesDelta += hData - h
@@ -90,7 +96,7 @@ class RBM():
 
         with self.vBiasesDeltaLock:
             self.vBiasesDelta[:,vVector] += vData - v
-            self.vBiasesDeltaCounter[:,vVector] += 1 # TODO FIX this updating only element not whole column
+            self.vBiasesDeltaCounter[:,vVector] += vData
 
 
     def update(self, verbose = False):
@@ -99,6 +105,7 @@ class RBM():
                 print(x)
 
         #updating weights
+
         wDeltaWhere = np.where((self.wDeltaCounter >= self.wUpdateFrequency) & (self.wDeltaCounter != 0))
         self.wMomentumTable[wDeltaWhere] = self.Momentum * self.wMomentumTable[wDeltaWhere] + self.LearningRate * (self.wDelta[wDeltaWhere]/self.wDeltaCounter[wDeltaWhere] - self.WDecay * self.wGlobal[wDeltaWhere])
         self.wGlobal[wDeltaWhere] += self.wMomentumTable[wDeltaWhere]
