@@ -1,32 +1,14 @@
-__author__ = 'Aleksander Surman, Tomasz Wis'
+__author__ = 'Aleksander Surman'
 
 import numpy as np
 import threading
 from scipy.special import expit as Sigmoid
 
-# casting method
 CastGeneratorToArray = lambda x: np.fromiter((x), np.float64)
 CastToArray = lambda x: np.array((x), np.float64)
 
-
 class RBM():
-    """
-    Restricted Boltzman Machine class
-    """
-
     def __init__(self, M = 17765, K = 5, F = 100, learningRate = 0.1, momentum = 0.9, wDecay = 0.001, vBiasesInitialization = None, updateFrequency = None):
-        """
-        Creates RBM
-        :param M: number of artists
-        :param K: number of grades
-        :param F: number of songs features
-        :param learningRate: learning rate for weights, hidden biases and visible biases
-        :param momentum: momentum for weights, hidden biases and visible biases
-        :param wDecay: weight decay
-        :param vBiasesInitialization: visible biases initialization method
-        :param updateFrequency: maximum number of local updates to update global weights
-        :return: RMB class
-        """
         # Constants
         self.M = M
         self.K = K
@@ -36,8 +18,6 @@ class RBM():
         self.WDecay = np.float32(wDecay)
 
         # Shared between threads
-        # wDelta - local weights
-        # wDeltaCounter - update counter for weights
         self.wDeltaLock = threading.Lock()
         self.wDelta = np.zeros((K, F, M), dtype=np.float32)
         self.wDeltaCounter = np.zeros((K, F, M), dtype=np.int)
@@ -51,75 +31,38 @@ class RBM():
         self.vBiasesDeltaCounter = np.zeros((K, M), dtype=np.int)
 
         # Globals
-        # wGlobal - Weights updating after each mini sets
-        # vBiasesGlobal - Visible layer biases updating after each mini sets
-        # hBiasesGlobal - Hidden layer biases updating after each mini sets
-        self.wGlobal = np.random.normal(0, 0.01, (K, F, M))
-        self.vBiasesGlobal = vBiasesInitialization
-        self.hBiasesGlobal = np.zeros((1, F), dtype=np.float32)
-
+        self.wGlobal = np.random.normal(0, 0.01, (K, F, M))             # Weights updating after each mini sets
+        self.vBiasesGlobal = vBiasesInitialization                      # Visible layer biases updating after each mini sets
+        self.hBiasesGlobal = np.zeros((1, F), dtype=np.float32)         # Hidden layer biases updating after each mini sets
 
         self.wMomentumTable = np.zeros((K, F, M), dtype=np.float32)
         self.vBiasesMomentumTable = np.zeros((K, M), dtype=np.float32)
         self.hBiasesMomentumTable = np.zeros((1, F), dtype=np.float32)
 
-        # to make predictions faster
+        #to make predictions faster
         self.Ranks = np.arange(self.K, dtype=np.float32).reshape(self.K,1)
 
         self.updateFrequency = updateFrequency
         self.wUpdateFrequency = np.ones((K, F, M))
         for i in range(F):
-            self.wUpdateFrequency[:,i] = updateFrequency  # I haven't got better idea
+            self.wUpdateFrequency[:,i] = updateFrequency # I haven't got better idea
 
-    # Eq. 2
     def computeProbabilityTheHiddenStates(self, v, w):
-        """
-        Computes probabilities of new hidden layer
-        :param v: visible layer (artists X grades)
-        :param w: weights
-        :return: hidden layer as vector of probabilities
-        """
-
+        # Eq. 2
         expressionInsideTheParentheses = np.vectorize(lambda j: self.hBiasesGlobal[0,j] + (np.multiply(v, w[:,j])).sum())
         return Sigmoid(expressionInsideTheParentheses(np.arange(self.F)))
 
-
     def computeUpdateTheHiddenStates(self, v, w):
-        """
-        Computes new hidden layer as binary
-        :param v: visible layer (artists X grades)
-        :param w: weights
-        :return: hidden layer as binary vector
-        """
-
         probabilities = self.computeProbabilityTheHiddenStates(v, w)
-        return np.random.binomial(1,probabilities, size=(1,self.F))
+        return np.random.binomial(1,probabilities, size=(1,self.F))                   #draw a hidden feature
 
-
-    # Eq. 1
     def computeUpdateTheVisibleStates(self, vBiases, h, w, artistsNumber):
-        """
-        Computes new visible layer
-        :param vBiases: biases for visible layer
-        :param h: hidden layer
-        :param w: weights
-        :param artistsNumber: number of used artists
-        :return: new visible layer
-        """
-        # σ(B+h·W)
-        product = np.exp(vBiases+np.dot(h, w))
-        return (product/product.sum(1)).reshape(self.K, artistsNumber)                #keep calm and pray it work
+        # Eq. 1
+        product = np.exp(vBiases+np.dot(h,w))                          #σ(B+h·W)
+        return (product/product.sum(1)).reshape(self.K,artistsNumber)                #keep calm and pray it work
 
-    def learn(self, input=None, T=1):
-        """
-        Learn from single user
-        :param input: visible layer of user
-        :param T: accuracy of Contrastive Divergence
-        :return: None
-        """
-
-        # numpy.krom worked slower
-        gradient = lambda v,h: np.multiply(v, h.T)
+    def learn(self, input = None, T = 1, showLikelihood = False):
+        gradient = lambda v,h: np.multiply(v, h.T)  #kron was slower
 
         (vVector, v) = input
 
@@ -156,17 +99,12 @@ class RBM():
             self.vBiasesDeltaCounter[:,vVector] += vData
 
 
-    def update(self, verbose=False):
-        """
-        Updates global weights and biases
-        :param verbose: true enables logs
-        :return: None
-        """
+    def update(self, verbose = False):
         def log(x):
             if verbose:
                 print(x)
 
-        # updating weights
+        #updating weights
 
         wDeltaWhere = np.where((self.wDeltaCounter >= self.wUpdateFrequency) & (self.wDeltaCounter != 0))
         self.wMomentumTable[wDeltaWhere] = self.Momentum * self.wMomentumTable[wDeltaWhere] + self.LearningRate * (self.wDelta[wDeltaWhere]/self.wDeltaCounter[wDeltaWhere] - self.WDecay * self.wGlobal[wDeltaWhere])
@@ -190,16 +128,7 @@ class RBM():
         self.vBiasesDelta[vBiasesWhere] = 0
         log("Updated {0} Visible biases".format(vBiasesWhere[0].size))
 
-    def prediction(self, input=None, isValidation = False):
-        """
-        Computes prediction of visible layer
-        :param input:
-        :param isValidation: false compute all artists
-                             true  compute relevant artists
-        :return: predicted visible layer
-        """
-
-        # vVector used artists
+    def prediction(self, input = None, isValidation = False):
         (vVector, v) = input
 
         if isValidation:
@@ -217,9 +146,6 @@ class RBM():
             return np.multiply(v, self.Ranks).sum(0)
 
     def saveRBM(self):
-        """
-        Saves data to numpy file
-        """
         import os
         from time import strftime, localtime
         saveDir = "Saves//"
@@ -262,11 +188,6 @@ class RBM():
 
 
 def loadRBM(file):
-    """
-    Load RBM data from file
-    :param file: numpy file
-    :return: None
-    """
     RBMFile = np.load(file)
     loadedRBM = RBM()
     loadedRBM.M = RBMFile['M']
