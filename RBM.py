@@ -2,7 +2,13 @@ __author__ = 'Aleksander Surman'
 
 import numpy as np
 import threading
-from scipy.special import expit as Sigmoid
+# from scipy.special import expit as Sigmoid
+Sigmoid = np.vectorize(lambda x: 1.0/(1.0+np.exp(-x)))
+
+# def sigmoid(x):
+#     return 1 / (1 + math.exp(-x))
+
+Sigmoid = np.vectorize(lambda x: 1.0/(1.0+np.exp(-x)))
 
 CastGeneratorToArray = lambda x: np.fromiter((x), np.float64)
 CastToArray = lambda x: np.array((x), np.float64)
@@ -20,7 +26,7 @@ class RBM():
         # Shared between threads
         self.wDeltaLock = threading.Lock()
         self.wDelta = np.zeros((K, F, M), dtype=np.float32)
-        self.wDeltaCounter = np.zeros((K, F, M), dtype=np.int)
+        self.wDeltaCounter = np.zeros(M, dtype=np.int)
 
         self.hBiasesDeltaLock = threading.Lock()
         self.hBiasesDelta = np.zeros((1, F), dtype=np.float32)
@@ -28,7 +34,7 @@ class RBM():
 
         self.vBiasesDeltaLock = threading.Lock()
         self.vBiasesDelta = np.zeros((K, M))
-        self.vBiasesDeltaCounter = np.zeros((K, M), dtype=np.int)
+        self.vBiasesDeltaCounter = np.zeros(M, dtype=np.int)
 
         # Globals
         self.wGlobal = np.random.normal(0, 0.01, (K, F, M))             # Weights updating after each mini sets
@@ -43,9 +49,8 @@ class RBM():
         self.Ranks = np.arange(self.K, dtype=np.float32).reshape(self.K,1)
 
         self.updateFrequency = updateFrequency
-        self.wUpdateFrequency = np.ones((K, F, M))
-        for i in range(F):
-            self.wUpdateFrequency[:,i] = updateFrequency # I haven't got better idea
+        self.wUpdateFrequency = np.ones(M)
+        self.wUpdateFrequency = updateFrequency
 
     def computeProbabilityTheHiddenStates(self, v, w):
         # Eq. 2
@@ -58,7 +63,7 @@ class RBM():
 
     def computeUpdateTheVisibleStates(self, vBiases, h, w, artistsNumber):
         # Eq. 1
-        product = np.exp(vBiases+np.dot(h,w))                          #σ(B+h·W)
+        product = np.exp(vBiases+np.dot(h,w))
         return (product/product.sum(1)).reshape(self.K,artistsNumber)                #keep calm and pray it work
 
     def learn(self, input = None, T = 1, showLikelihood = False):
@@ -80,15 +85,9 @@ class RBM():
 
         negativeGradient = CastToArray([gradient(v[k,:], h) for k in range(self.K)])
 
-        def uglyButWork(vData):
-            vDataToUpdateW = np.zeros((self.K, self.F, len(vVector)))
-            for i in range(self.F):
-                vDataToUpdateW[:,i] = vData
-            return vDataToUpdateW
-
         with self.wDeltaLock:
             self.wDelta[:,:,vVector] += positiveGradient - negativeGradient
-            self.wDeltaCounter[:,:,vVector] += uglyButWork(vData)
+            self.wDeltaCounter[vVector] += 1
 
         with self.hBiasesDeltaLock:
             self.hBiasesDelta += hData - h
@@ -96,7 +95,7 @@ class RBM():
 
         with self.vBiasesDeltaLock:
             self.vBiasesDelta[:,vVector] += vData - v
-            self.vBiasesDeltaCounter[:,vVector] += vData
+            self.vBiasesDeltaCounter[vVector] += 1
 
 
     def update(self, verbose = False):
@@ -107,10 +106,10 @@ class RBM():
         #updating weights
 
         wDeltaWhere = np.where((self.wDeltaCounter >= self.wUpdateFrequency) & (self.wDeltaCounter != 0))
-        self.wMomentumTable[wDeltaWhere] = self.Momentum * self.wMomentumTable[wDeltaWhere] + self.LearningRate * (self.wDelta[wDeltaWhere]/self.wDeltaCounter[wDeltaWhere] - self.WDecay * self.wGlobal[wDeltaWhere])
-        self.wGlobal[wDeltaWhere] += self.wMomentumTable[wDeltaWhere]
+        self.wMomentumTable[:,:,wDeltaWhere] = self.Momentum * self.wMomentumTable[:,:,wDeltaWhere] + self.LearningRate * (self.wDelta[:,:,wDeltaWhere]/self.wDeltaCounter[wDeltaWhere] - self.WDecay * self.wGlobal[:,:,wDeltaWhere])
+        self.wGlobal[:,:,wDeltaWhere] += self.wMomentumTable[:,:,wDeltaWhere]
         self.wDeltaCounter[wDeltaWhere] = 0
-        self.wDelta[wDeltaWhere] = 0
+        self.wDelta[:,:,wDeltaWhere] = 0
         log("Updated {0} Weights".format(wDeltaWhere[0].size))
 
         # updating hidden biases
@@ -122,10 +121,10 @@ class RBM():
 
         # updating visible biases
         vBiasesWhere = np.where((self.vBiasesDeltaCounter >= self.updateFrequency) & (self.vBiasesDeltaCounter != 0))
-        self.vBiasesMomentumTable[vBiasesWhere] = self.Momentum * self.vBiasesMomentumTable[vBiasesWhere] + self.LearningRate * (self.vBiasesDelta[vBiasesWhere]/self.vBiasesDeltaCounter[vBiasesWhere])
-        self.vBiasesGlobal[vBiasesWhere] += self.vBiasesMomentumTable[vBiasesWhere]
+        self.vBiasesMomentumTable[:,vBiasesWhere] = self.Momentum * self.vBiasesMomentumTable[:,vBiasesWhere] + self.LearningRate * (self.vBiasesDelta[:,vBiasesWhere]/self.vBiasesDeltaCounter[vBiasesWhere])
+        self.vBiasesGlobal[:,vBiasesWhere] += self.vBiasesMomentumTable[:,vBiasesWhere]
         self.vBiasesDeltaCounter[vBiasesWhere] = 0
-        self.vBiasesDelta[vBiasesWhere] = 0
+        self.vBiasesDelta[:,vBiasesWhere] = 0
         log("Updated {0} Visible biases".format(vBiasesWhere[0].size))
 
     def prediction(self, input = None, isValidation = False):

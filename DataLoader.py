@@ -1,6 +1,8 @@
+import os
+
 __author__ = 'Aleksander Surman'
 
-from _testcapi import the_number_three
+# from _testcapi import the_number_three
 from time import time
 
 ##################################################### USAGE #####################################################
@@ -25,16 +27,35 @@ import numpy as np
 
 class DataLoader():
 
-    def makeVisibleFromRanks(self, matrix, K, addRanksToTuple = False, generatevBiasesInitialization  = False, generateUpdateFrequency = False):
+    def makeVisibleFromRanks(self, matrix, K, addRanksToTuple = False, generatevBiasesInitialization  = False, generateUpdateFrequency = False, eraseRandomNumber = 0):
+
 
         if generatevBiasesInitialization:
             vBiasesInitialization = np.zeros((self.K, self.M), dtype=np.float32)
-            counter = 0;
+            counter = 0
+
+        erasedIndex = []
+        erasedRanks = []
+
+        if eraseRandomNumber != 0:
+
+            for (indexes, ranks) in matrix: # data format (tuple of artist indexes, tuple of ranks)
+                for e in range(eraseRandomNumber):
+                    rindex = np.random.randint(len(indexes))
+                    if e == 0:
+                        erasedIndex.append(rindex)
+                        erasedRanks.append(ranks[rindex])
+                    else:
+                        erasedIndex += [rindex]
+                        erasedRanks += [ranks[rindex]]
+                    ranks[rindex] = -1
 
         visibleLayer = []
         for (indexes, ranks) in matrix: # data format (tuple of artist indexes, tuple of ranks)
-            Vtmp = np.zeros((K, len(ranks)), dtype=np.float32)
-            for index in range(len(ranks)):
+            Vtmp = np.zeros((K, len(indexes)), dtype=np.float32)
+            for index in range(len(indexes)):
+                if ranks[index] == -1:
+                    continue
                 Vtmp[ranks[index]][index] = np.float32(1.0) # not sure whether should be row[index] - 1, because ranks are from 1
                 if generatevBiasesInitialization:
                     vBiasesInitialization[ranks[index]][indexes[index]] += 1
@@ -44,15 +65,17 @@ class DataLoader():
             else:
                 visibleLayer.append((indexes, Vtmp))
         if generatevBiasesInitialization and generateUpdateFrequency:
-            return visibleLayer, vBiasesInitialization/counter, vBiasesInitialization.astype(np.int)
+            return visibleLayer, vBiasesInitialization/counter, vBiasesInitialization.sum(0).astype(np.int)
         elif generatevBiasesInitialization:
-            return visibleLayer, vBiasesInitialization/counter,
+            return visibleLayer, vBiasesInitialization/counter
+        elif eraseRandomNumber != 0:
+            return visibleLayer, erasedIndex, erasedRanks
         return visibleLayer
 
     def __init__(self,
-                    trainingSetFile = "Data\TrainingSet.npy",
-                    validationSetFile = "Data\ValidationSet.npy",
-                    testSetFile = "Data\TestSet.npy",
+                    trainingSetFile = "DataForPython2.7/TrainingSet.npy",
+                    validationSetFile = "DataForPython2.7/ValidationSet.npy",
+                    testSetFile = "DataForPython2.7/TestSet.npy",
                     K = 5,
                     M = 17765,
                     batchSizeForOneThread = 100,
@@ -67,6 +90,8 @@ class DataLoader():
 
             log("Initializing data loader")
 
+            # fileName = strftime("%Y-%m-%d-%H-%M-%S", localtime())
+
             self.K = K
             self.M = M
 
@@ -75,18 +100,14 @@ class DataLoader():
 
             log("\t Making Binary form from training set and generating visible biases initialization")
             self.trainingSet, self.vBiasesInitialization, self.updateFrequency = self.makeVisibleFromRanks(self.trainingSet, K, generatevBiasesInitialization = True, generateUpdateFrequency= True)
-
             self.trainingSetSize = len(self.trainingSet)
             log("\t \t Done, Size: " + str(self.trainingSetSize))
-
-
 
             log("\t Loading validation set")
             self.validationSet = np.load(validationSetFile)
 
             log("\t Making Binary form from validation set")
-            self.validationSet = self.makeVisibleFromRanks(self.validationSet, K, addRanksToTuple = True)
-
+            self.validationSet, self.erasedIndex, self.erasedRanks = self.makeVisibleFromRanks(self.validationSet, K, eraseRandomNumber=1)
             self.validationSetSize = len(self.validationSet)
             log("\t \t Done, Size: " + str(self.validationSetSize))
 
@@ -138,7 +159,7 @@ class DataLoader():
 
     def GiveVisibleLayerForValidation(self, threadNumber):
         self.InValidationThreadsCounter[threadNumber] += 1
-        return self.validationSet[self.InValidationThreadsCounter[the_number_three]]
+        return self.validationSet[self.InValidationThreadsCounter[threadNumber]], self.erasedIndex[self.InValidationThreadsCounter[threadNumber]], self.erasedRanks[self.InValidationThreadsCounter[threadNumber]]
 
     def GiveVisibleLayerForTest(self):
         self.testSetCounter = (self.testSetCounter + 1) % self.testSetSize

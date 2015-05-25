@@ -18,10 +18,10 @@ def computeRMSE(rbm = None, dataLoader = None, threadsNumber = 10, verbose = Fal
 
     def threadJob(threadNumber):
         for i in range(int(dataLoader.validationSetSize/threadsNumber)):
-            (vVector, v, integerV) = dataLoader.GiveVisibleLayerForValidation(threadNumber)
-            predictions = rbm.prediction((vVector, v), isValidation = True) # if isValidation = False take ~ 20 times more
+            visibleLayer, erasedIndex, erasedRanks = dataLoader.GiveVisibleLayerForValidation(threadNumber)
+            predictions = rbm.prediction(visibleLayer, isValidation = True) # if isValidation = False take ~ 20 times more
             with errorsLock:
-                errors.append(predictions - integerV)
+                errors.append(predictions[erasedIndex] - erasedRanks)
 
     threads = []
     for i in range(threadsNumber):
@@ -102,11 +102,10 @@ if __name__ == "__main__":
 
     dataLoader = DataLoader(K = K, M = M, batchSizeForOneThread = batchSizeForOneThread, threadsNumber = threadsNumber, verbose = True)
 
-    print(str(np.where(dataLoader.updateFrequency == 0)[0].size))
-
     whereUpdateMax = np.where(dataLoader.updateFrequency > updateFrequencyMAX)
     dataLoader.updateFrequency[whereUpdateMax] = updateFrequencyMAX
 
+    print(dataLoader.updateFrequency)
     rbm = RBM(M, K, F, learningRate, momentum, wDecay, dataLoader.vBiasesInitialization, dataLoader.updateFrequency)
     numberOfMiniSets = int(np.floor(dataLoader.trainingSetSize / (threadsNumber * batchSizeForOneThread)))
 
