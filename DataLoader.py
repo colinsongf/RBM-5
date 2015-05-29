@@ -31,7 +31,7 @@ class DataLoader():
 
 
         if generatevBiasesInitialization:
-            vBiasesInitialization = np.zeros((self.K, self.M), dtype=np.float32)
+            vBiasesInitialization = np.zeros((self.K, self.M), dtype=np.float64)
             counter = 0
 
         erasedIndex = []
@@ -52,13 +52,13 @@ class DataLoader():
 
         visibleLayer = []
         for (indexes, ranks) in matrix: # data format (tuple of artist indexes, tuple of ranks)
-            Vtmp = np.zeros((K, len(indexes)), dtype=np.float32)
+            Vtmp = np.zeros((K, len(indexes)), dtype=np.float64)
             for index in range(len(indexes)):
                 if ranks[index] == -1:
                     continue
-                Vtmp[ranks[index]][index] = np.float32(1.0) # not sure whether should be row[index] - 1, because ranks are from 1
+                Vtmp[ranks[index]-1][index] = np.float64(1.0) # not sure whether should be row[index] - 1, because ranks are from 1
                 if generatevBiasesInitialization:
-                    vBiasesInitialization[ranks[index]][indexes[index]] += 1
+                    vBiasesInitialization[ranks[index]-1][indexes[index]] += 1
                     counter += 1
             if addRanksToTuple:
                 visibleLayer.append((indexes, Vtmp, ranks))
@@ -75,8 +75,9 @@ class DataLoader():
     def __init__(self,
                     trainingSetFile = "Data/TrainingSet.npy",
                     validationSetFile = "Data/ValidationSet.npy",
+                    ValidationFromTestSetFile = "Data/ValidationFromTestSet.npy",
                     testSetFile = "Data/TestSet.npy",
-                    K = 5,
+                    K = 4,
                     M = 17765,
                     batchSizeForOneThread = 100,
                     threadsNumber = 10,
@@ -111,7 +112,13 @@ class DataLoader():
             self.validationSetSize = len(self.validationSet)
             log("\t \t Done, Size: " + str(self.validationSetSize))
 
+            log("\t Loading validation from testing set")
+            self.validationFromTestSet = np.load(ValidationFromTestSetFile)
 
+            log("\t Making Binary form from validation from testing set")
+            self.validationFromTestSet, self.erasedIndexFromTestSet, self.erasedRanksFromTestSet = self.makeVisibleFromRanks(self.validationFromTestSet, K, eraseRandomNumber=1)
+            self.validationFromTestSetSize = len(self.validationFromTestSet)
+            log("\t \t Done, Size: " + str(self.validationFromTestSetSize))
 
             log("\t Loading test set")
             self.testSet = np.load(testSetFile)
@@ -160,6 +167,15 @@ class DataLoader():
     def GiveVisibleLayerForValidation(self, threadNumber):
         self.InValidationThreadsCounter[threadNumber] += 1
         return self.validationSet[self.InValidationThreadsCounter[threadNumber]], self.erasedIndex[self.InValidationThreadsCounter[threadNumber]], self.erasedRanks[self.InValidationThreadsCounter[threadNumber]]
+
+    def StartNewValidationFromTestSet(self):
+        threadPortion = int(self.validationFromTestSetSize / self.threadsNumber)
+        self.InValidationFromTestThreadsCounter = [-1 + i * threadPortion for i in range(self.threadsNumber)] # -1 is for start from 0
+
+
+    def GiveVisibleLayerForValidationFromTest(self, threadNumber):
+        self.InValidationFromTestThreadsCounter[threadNumber] += 1
+        return self.validationFromTestSet[self.InValidationFromTestThreadsCounter[threadNumber]], self.erasedIndexFromTestSet[self.InValidationFromTestThreadsCounter[threadNumber]], self.erasedRanksFromTestSet[self.InValidationFromTestThreadsCounter[threadNumber]]
 
     def GiveVisibleLayerForTest(self):
         self.testSetCounter = (self.testSetCounter + 1) % self.testSetSize

@@ -1,3 +1,5 @@
+from numpy.ma import copy
+
 __author__ = 'Aleksander Surman'
 
 import numpy as np
@@ -19,17 +21,17 @@ class RBM():
         self.M = M
         self.K = K
         self.F = F
-        self.LearningRate = np.float32(learningRate)
-        self.Momentum = np.float32(momentum)
-        self.WDecay = np.float32(wDecay)
+        self.LearningRate = np.float64(learningRate)
+        self.Momentum = np.float64(momentum)
+        self.WDecay = np.float64(wDecay)
 
         # Shared between threads
         self.wDeltaLock = threading.Lock()
-        self.wDelta = np.zeros((K, F, M), dtype=np.float32)
+        self.wDelta = np.zeros((K, F, M), dtype=np.float64)
         self.wDeltaCounter = np.zeros(M, dtype=np.int)
 
         self.hBiasesDeltaLock = threading.Lock()
-        self.hBiasesDelta = np.zeros((1, F), dtype=np.float32)
+        self.hBiasesDelta = np.zeros((1, F), dtype=np.float64)
         self.hBiasesDeltaCounter = np.zeros((1, F), dtype=np.int)
 
         self.vBiasesDeltaLock = threading.Lock()
@@ -39,18 +41,21 @@ class RBM():
         # Globals
         self.wGlobal = np.random.normal(0, 0.01, (K, F, M))             # Weights updating after each mini sets
         self.vBiasesGlobal = vBiasesInitialization                      # Visible layer biases updating after each mini sets
-        self.hBiasesGlobal = np.zeros((1, F), dtype=np.float32)         # Hidden layer biases updating after each mini sets
+        self.hBiasesGlobal = np.zeros((1, F), dtype=np.float64)         # Hidden layer biases updating after each mini sets
 
-        self.wMomentumTable = np.zeros((K, F, M), dtype=np.float32)
-        self.vBiasesMomentumTable = np.zeros((K, M), dtype=np.float32)
-        self.hBiasesMomentumTable = np.zeros((1, F), dtype=np.float32)
+        self.wMomentumTable = np.zeros((K, F, M), dtype=np.float64)
+        self.vBiasesMomentumTable = np.zeros((K, M), dtype=np.float64)
+        self.hBiasesMomentumTable = np.zeros((1, F), dtype=np.float64)
 
         #to make predictions faster
-        self.Ranks = np.arange(self.K, dtype=np.float32).reshape(self.K,1)
+        self.Ranks = np.arange(1, self.K + 1, dtype=np.float64).reshape(self.K,1)
 
         self.updateFrequency = updateFrequency
         self.wUpdateFrequency = np.ones(M)
         self.wUpdateFrequency = updateFrequency
+
+    def changeMomentum(self, momentum):
+        self.Momentum = momentum
 
     def computeProbabilityTheHiddenStates(self, v, w):
         # Eq. 2
@@ -74,8 +79,10 @@ class RBM():
         w = self.wGlobal[:,:,vVector]
         vBiases = self.vBiasesGlobal[:,vVector]
 
-        v = vData = v
-        h = hData = self.computeUpdateTheHiddenStates(v, w)
+        h  = self.computeUpdateTheHiddenStates(v, w)
+
+        vData = np.copy(v)
+        hData = np.copy(h)
 
         positiveGradient = CastToArray([gradient(v[k,:], h) for k in range(self.K)])
 
@@ -137,12 +144,11 @@ class RBM():
             h = self.computeUpdateTheHiddenStates(v, w)
             v = self.computeUpdateTheVisibleStates(vBiases, h, w, len(vVector))
 
-            return np.multiply(v, self.Ranks).sum(0)
         else:
             h = self.computeUpdateTheHiddenStates(v, self.wGlobal[:,:,vVector])
             v = self.computeUpdateTheVisibleStates(self.vBiasesGlobal, h, self.wGlobal, self.M)
 
-            return np.multiply(v, self.Ranks).sum(0)
+        return np.multiply(v, self.Ranks).sum(0)
 
     def saveRBM(self):
         import os

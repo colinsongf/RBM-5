@@ -8,18 +8,16 @@ from RBM import RBM, loadRBM
 import numpy as np
 import sys
 
-def computeRMSE(rbm = None, dataLoader = None, threadsNumber = 10, verbose = False):
+def computeRMSE(rbm = None, SetSize = None, Giver = None, threadsNumber = 10, verbose = False):
     startTime = time()
-
-    dataLoader.StartNewValidationSet()
 
     # sharing between thread
     errors = []
     errorsLock = threading.Lock()
 
     def threadJob(threadNumber):
-        for i in range(int(dataLoader.validationSetSize/threadsNumber)):
-            visibleLayer, erasedIndex, erasedRanks = dataLoader.GiveVisibleLayerForValidation(threadNumber)
+        for i in range(int(SetSize/threadsNumber)):
+            visibleLayer, erasedIndex, erasedRanks = Giver(threadNumber)
             predictions = rbm.prediction(visibleLayer, isValidation = True) # if isValidation = False take ~ 20 times more
             with errorsLock:
                 errors.append(predictions[erasedIndex] - erasedRanks)
@@ -81,7 +79,7 @@ def learnOneEpoch(rbm = None, dataLoader = None, threadsNumber = 10, batchSizeFo
 
             if verbose:
                 print("Finish mini set no: {0} \nTook: {1:0.5f} sec".format(setNumber, endTime - startTime))
-		sys.stdout.flush()
+        sys.stdout.flush()
 
     endTime = time()
     if verbose:
@@ -89,17 +87,18 @@ def learnOneEpoch(rbm = None, dataLoader = None, threadsNumber = 10, batchSizeFo
 
 if __name__ == "__main__":
 
+    np.random.seed(666)
+
     #configuration
     threadsNumber = 10
     batchSizeForOneThread = 100
     M = 17765
-    K = 5
+    K = 4
     F = 100
     learningRate = 0.1
-    momentum = 0.9
-    wDecay = 0.001
-    updateFrequencyMAX = 300
-
+    momentum = 0.5
+    wDecay = 0.0002
+    updateFrequencyMAX = 100
     numberOfEpoch = 50
     dataLoader = DataLoader(K = K, M = M, batchSizeForOneThread = batchSizeForOneThread, threadsNumber = threadsNumber, verbose = True)
 
@@ -110,10 +109,22 @@ if __name__ == "__main__":
     numberOfMiniSets = int(np.floor(dataLoader.trainingSetSize / (threadsNumber * batchSizeForOneThread)))
 
     for i in range(numberOfEpoch):
+        if i >=6:
+            rbm.changeMomentum(0.8)
         dataLoader.StartNewEpoch()
-        learnOneEpoch(rbm, dataLoader, threadsNumber, batchSizeForOneThread, numberOfMiniSets, verbose=True)
+        # learnOneEpoch(rbm, dataLoader, threadsNumber, batchSizeForOneThread, numberOfMiniSets, verbose=True)
         with open("RBM_RMSEs.txt", "a") as RMSEsFile:
-            RMSEsFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(rbm, dataLoader, threadsNumber, verbose=True)))
+            dataLoader.StartNewValidationSet()
+            Giver = dataLoader.GiveVisibleLayerForValidation
+            SetSize = dataLoader.validationSetSize
+            RMSEsFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(rbm, SetSize, Giver, threadsNumber, verbose=True)))
+            RMSEsFile.flush()
+        with open("RBM_RMSEs_FROM_TESTS.txt", "a") as RMSEsFile:
+            dataLoader.StartNewValidationFromTestSet()
+            Giver = dataLoader.GiveVisibleLayerForValidationFromTest
+            SetSize = dataLoader.validationFromTestSetSize
+            RMSEsFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(rbm, SetSize, Giver, threadsNumber, verbose=True)))
+            RMSEsFile.flush()
     sys.stdout.flush()
     rbm.saveRBM()
 
