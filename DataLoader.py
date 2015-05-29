@@ -73,9 +73,9 @@ class DataLoader():
         return visibleLayer
 
     def __init__(self,
-                    trainingSetFile = "DataForPython2.7/TrainingSet.npy",
-                    validationSetFile = "DataForPython2.7/ValidationSet.npy",
-                    testSetFile = "DataForPython2.7/TestSet.npy",
+                    trainingSetFile = "Data/TrainingSet.npy",
+                    validationSetFile = "Data/ValidationSet.npy",
+                    testSetFile = "Data/TestSet.npy",
                     K = 5,
                     M = 17765,
                     batchSizeForOneThread = 100,

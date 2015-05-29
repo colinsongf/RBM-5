@@ -150,7 +150,7 @@ class RBM():
         saveDir = "Saves//"
         try:
             if not os.path.isdir("Saves//"):
-                os.makedir("Saves")
+                os.mkdir("Saves")
             saveDir = "Saves//"
         except OSError:
             saveDir = "" # if error save in . folder

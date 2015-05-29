@@ -6,6 +6,7 @@ from time import time
 from DataLoader import DataLoader
 from RBM import RBM, loadRBM
 import numpy as np
+import sys
 
 def computeRMSE(rbm = None, dataLoader = None, threadsNumber = 10, verbose = False):
     startTime = time()
@@ -80,6 +81,7 @@ def learnOneEpoch(rbm = None, dataLoader = None, threadsNumber = 10, batchSizeFo
 
             if verbose:
                 print("Finish mini set no: {0} \nTook: {1:0.5f} sec".format(setNumber, endTime - startTime))
+		sys.stdout.flush()
 
     endTime = time()
     if verbose:
@@ -98,14 +100,12 @@ if __name__ == "__main__":
     wDecay = 0.001
     updateFrequencyMAX = 300
 
-    numberOfEpoch = 1
-
+    numberOfEpoch = 50
     dataLoader = DataLoader(K = K, M = M, batchSizeForOneThread = batchSizeForOneThread, threadsNumber = threadsNumber, verbose = True)
 
     whereUpdateMax = np.where(dataLoader.updateFrequency > updateFrequencyMAX)
     dataLoader.updateFrequency[whereUpdateMax] = updateFrequencyMAX
 
-    print(dataLoader.updateFrequency)
     rbm = RBM(M, K, F, learningRate, momentum, wDecay, dataLoader.vBiasesInitialization, dataLoader.updateFrequency)
     numberOfMiniSets = int(np.floor(dataLoader.trainingSetSize / (threadsNumber * batchSizeForOneThread)))
 
@@ -114,6 +114,6 @@ if __name__ == "__main__":
         learnOneEpoch(rbm, dataLoader, threadsNumber, batchSizeForOneThread, numberOfMiniSets, verbose=True)
         with open("RBM_RMSEs.txt", "a") as RMSEsFile:
             RMSEsFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(rbm, dataLoader, threadsNumber, verbose=True)))
-
-
+    sys.stdout.flush()
+    rbm.saveRBM()
 
