@@ -112,7 +112,7 @@ if __name__ == "__main__":
         if i >=6:
             rbm.changeMomentum(0.8)
         dataLoader.StartNewEpoch()
-        # learnOneEpoch(rbm, dataLoader, threadsNumber, batchSizeForOneThread, numberOfMiniSets, verbose=True)
+        learnOneEpoch(rbm, dataLoader, threadsNumber, batchSizeForOneThread, numberOfMiniSets, verbose=True)
         with open("RBM_RMSEs.txt", "a") as RMSEsFile:
             dataLoader.StartNewValidationSet()
             Giver = dataLoader.GiveVisibleLayerForValidation
