@@ -4,19 +4,19 @@ import threading
 from time import time
 
 from DataLoader import DataLoader
-from RBM import RBM, loadRBM
+from RBM import RBM
 import numpy as np
 import sys
-
-def computeRMSE(rbm = None, SetSize = None, Giver = None, threadsNumber = 10, verbose = False):
+def computeRMSE(SetSize = None, Giver = None, threadsNumber = 10, verbose = False):
     startTime = time()
 
     # sharing between thread
-    errors = []
+
     errorsLock = threading.Lock()
 
-    def threadJob(threadNumber):
-        for i in range(int(SetSize/threadsNumber)):
+    errors = []
+    def threadJob(threadNumber, errors):
+        for _ in range(int(SetSize/threadsNumber)):
             visibleLayer, erasedIndex, erasedRanks = Giver(threadNumber)
             predictions = rbm.prediction(visibleLayer, isValidation = True) # if isValidation = False take ~ 20 times more
             with errorsLock:
@@ -24,7 +24,7 @@ def computeRMSE(rbm = None, SetSize = None, Giver = None, threadsNumber = 10, ve
 
     threads = []
     for i in range(threadsNumber):
-        threads.append(threading.Thread(target=threadJob, args=(i, )))
+        threads.append(threading.Thread(target=threadJob, args=(i, errors, )))
         threads[i].start()
 
     for i in range(threadsNumber):
@@ -36,7 +36,8 @@ def computeRMSE(rbm = None, SetSize = None, Giver = None, threadsNumber = 10, ve
     endTime = time()
 
     if verbose:
-        print("RMSE: {0} \nTook: {1:0.5f} sec".format(RMSE, endTime - startTime))
+        # print("RMSE: {0} \nTook: {1:0.5f} sec".format(RMSE, endTime - startTime))
+        print("RMSE: {0}".format(RMSE))
     return RMSE
 
 def learnOneEpoch(rbm = None, dataLoader = None, threadsNumber = 10, batchSizeForOneThread = 100, numberOfMiniSets = 319, verbose = False):
@@ -90,7 +91,7 @@ if __name__ == "__main__":
     np.random.seed(666)
 
     #configuration
-    threadsNumber = 10
+    threadsNumber = 1
     batchSizeForOneThread = 100
     M = 17765
     K = 4
@@ -100,7 +101,7 @@ if __name__ == "__main__":
     wDecay = 0.0002
     updateFrequencyMAX = 100
     numberOfEpoch = 50
-    dataLoader = DataLoader(K = K, M = M, batchSizeForOneThread = batchSizeForOneThread, threadsNumber = threadsNumber, verbose = True)
+    dataLoader = DataLoader(K = K, M = M, batchSizeForOneThread = batchSizeForOneThread, threadsNumber = threadsNumber, verbose = False)
 
     whereUpdateMax = np.where(dataLoader.updateFrequency > updateFrequencyMAX)
     dataLoader.updateFrequency[whereUpdateMax] = updateFrequencyMAX
@@ -112,19 +113,20 @@ if __name__ == "__main__":
         if i >=6:
             rbm.changeMomentum(0.8)
         dataLoader.StartNewEpoch()
-        learnOneEpoch(rbm, dataLoader, threadsNumber, batchSizeForOneThread, numberOfMiniSets, verbose=True)
+        learnOneEpoch(rbm, dataLoader, threadsNumber, batchSizeForOneThread, numberOfMiniSets, verbose=False)
         with open("RBM_RMSEs.txt", "a") as RMSEsFile:
             dataLoader.StartNewValidationSet()
             Giver = dataLoader.GiveVisibleLayerForValidation
             SetSize = dataLoader.validationSetSize
-            RMSEsFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(rbm, SetSize, Giver, threadsNumber, verbose=True)))
+            RMSEsFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(SetSize, Giver, threadsNumber, verbose=True)))
             RMSEsFile.flush()
         with open("RBM_RMSEs_FROM_TESTS.txt", "a") as RMSEsFile:
-            dataLoader.StartNewValidationFromTestSet()
-            Giver = dataLoader.GiveVisibleLayerForValidationFromTest
-            SetSize = dataLoader.validationFromTestSetSize
-            RMSEsFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(rbm, SetSize, Giver, threadsNumber, verbose=True)))
+            dataLoader.StartNewValidationFromTrainingSet()
+            Giver = dataLoader.GiveVisibleLayerForValidationFromTraining
+            SetSize = dataLoader.validationFromTrainingSetSize
+            RMSEsFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(SetSize, Giver, threadsNumber, verbose=True)))
             RMSEsFile.flush()
+        print("-----------------")
     sys.stdout.flush()
     rbm.saveRBM()
 
