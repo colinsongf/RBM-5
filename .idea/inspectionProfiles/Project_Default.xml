@@ -4,6 +4,21 @@
     <option name="myLocal" value="false" />
     <inspection_tool class="PyPep8Inspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="PyPep8NamingInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="numpy.random.seed" />
+          <option value="numpy.random.randint" />
+          <option value="numpy.float64" />
+          <option value="numpy.int64" />
+          <option value="numpy.random.normal" />
+          <option value="numpy.multiply" />
+          <option value="numpy.random.binomial" />
+          <option value="numpy.exp" />
+          <option value="numpy.log" />
+        </list>
+      </option>
+    </inspection_tool>
     <inspection_tool class="SpellCheckingInspection" enabled="false" level="TYPO" enabled_by_default="false">
       <option name="processCode" value="true" />
       <option name="processLiterals" value="true" />

@@ -1,9 +1,5 @@
-import os
-
 __author__ = 'Aleksander Surman'
 
-# from _testcapi import the_number_three
-from time import time
 
 ##################################################### USAGE #####################################################
 #                                                                                                               #
@@ -23,13 +19,14 @@ from time import time
 #################################################################################################################
 
 import numpy as np
-
+from time import time
 
 class DataLoader():
 
     def makeVisibleFromRanks(self, matrix, addRanksToTuple = False, generatevBiasesInitialization  = False, generateUpdateFrequency = False, eraseRandomNumber = 0):
 
-
+        vBiasesInitialization = None
+        counter = None
         if generatevBiasesInitialization:
             vBiasesInitialization = np.zeros((self.K, self.M), dtype=np.float64)
             counter = 0
@@ -53,7 +50,7 @@ class DataLoader():
 
         visiblelayers = []
         for (indexes, ranks) in matrix: # data format (tuple of artist indexes, tuple of ranks)
-            Vtmp = np.zeros((K, len(indexes)), dtype=np.float64)
+            Vtmp = np.zeros((self.K, len(indexes)), dtype=np.float64)
             for index in range(len(indexes)):
                 if ranks[index] == -1:
                     continue
@@ -75,9 +72,8 @@ class DataLoader():
         return visiblelayers
 
     def __init__(self,
-                    # trainingSetFile = "Data/TrainingSet.npy",
-                    trainingSetFile = "Data/MiniTrainingSet.npy",
-                    validationSetFile = "Data/MiniTrainingSet.npy",
+                    trainingSetFile = "Data/TrainingSet.npy",
+                    validationSetFile = "Data/ValidationSet.npy",
                     ValidationFromTestSetFile = "Data/ValidationFromTestSet.npy",
                     testSetFile = "Data/TestSet.npy",
                     K = 4, # from 1 to K
