@@ -99,19 +99,21 @@ if __name__ == "__main__":
     updateFrequencyMAX = Config.getint("RBM", "updateFrequencyMAX")
     numberOfEpoch = Config.getint("RBM", "numberOfEpoch")
 
-    dataLoader = DataLoader(K = K, M = M, batchSizeForOneThread = batchSizeForOneThread, threadsNumber = threadsNumber, verbose = False)
+    dataLoader = DataLoader(K = K, M = M, batchSizeForOneThread = batchSizeForOneThread, threadsNumber = threadsNumber, verbose = True)
 
     whereUpdateMax = np.where(dataLoader.updateFrequency > updateFrequencyMAX)
     dataLoader.updateFrequency[whereUpdateMax] = updateFrequencyMAX
+
+    dataLoader.vBiasesInitialization[np.where(dataLoader.vBiasesInitialization < np.float64(0.1e-100))] = np.float64(0.1e-100)
 
     rbm = RBM(M, K, F, learningRate, momentum, wDecay, dataLoader.vBiasesInitialization, dataLoader.updateFrequency)
     numberOfMiniSets = np.int(np.ma.floor(dataLoader.trainingSetSize / (threadsNumber * batchSizeForOneThread)))
 
     for i in range(numberOfEpoch):
-        if i >=6:
-            rbm.setMomentum(0.8)
+        # if i >=6:
+        #     rbm.setMomentum(0.8)
         dataLoader.StartNewEpoch()
-        learnOneEpoch(verbose=False)
+        learnOneEpoch(verbose=True)
 
         with open("VALIDATION_RMSE.txt", "a") as rmsesFile:
             dataLoader.StartNewValidationSet()
