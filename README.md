@@ -4,4 +4,6 @@
 - numpy
 - scipy
 
-#####By Aleksander Surman and Tomasz Wis
+#####Author: Aleksander Surman
+#####Helper: Tomasz Wis
+#####Supervisor: dr inż. Marcin Kurdziel 
