@@ -82,12 +82,14 @@ def learnOneEpoch(verbose = False):
         print("Epoch took: {0:0.5f} sec".format(endTime - startTime))
 
 if __name__ == "__main__":
-
+    if len(sys.argv) != 2:
+        print("run: python main.py config file")
+        exit(-1)
     np.random.seed(666)
 
     #configuration
     Config = ConfigParser()
-    Config.read("config.ini")
+    Config.read("configs/"+sys.argv[1])
     threadsNumber = Config.getint("RBM", "threadsNumber")
     batchSizeForOneThread = Config.getint("RBM", "batchSizeForOneThread")
     M = Config.getint("RBM", "M")
@@ -109,25 +111,38 @@ if __name__ == "__main__":
     rbm = RBM(M, K, F, learningRate, momentum, wDecay, dataLoader.vBiasesInitialization, dataLoader.updateFrequency)
     numberOfMiniSets = np.int(np.ma.floor(dataLoader.trainingSetSize / (threadsNumber * batchSizeForOneThread)))
 
+
+    with open(sys.argv[1]+"VALIDATION_RMSE.txt", "a") as rmsesFile:
+        dataLoader.StartNewValidationSet()
+        GetVisiableLayer = dataLoader.GiveVisibleLayerForValidation
+        setSize = dataLoader.validationSetSize
+        rmsesFile.write("Epoch {0}, RMSE {1}\n".format(0, computeRMSE(verbose=True)))
+        rmsesFile.flush()
+    with open(sys.argv[1]+"TRAINING_RMSE.txt", "a") as rmsesFile:
+        dataLoader.StartNewValidationFromTrainingSet()
+        GetVisiableLayer = dataLoader.GiveVisibleLayerForValidationFromTraining
+        setSize = dataLoader.validationFromTrainingSetSize
+        rmsesFile.write("Epoch {0}, RMSE {1}\n".format(0, computeRMSE(verbose=True)))
+        rmsesFile.flush()
+
     for i in range(numberOfEpoch):
-        # if i >=6:
-        #     rbm.setMomentum(0.8)
+        if i >=6:
+            rbm.setMomentum(0.8)
         dataLoader.StartNewEpoch()
         learnOneEpoch(verbose=True)
 
-        with open("VALIDATION_RMSE.txt", "a") as rmsesFile:
+        with open(sys.argv[1]+"VALIDATION_RMSE.txt", "a") as rmsesFile:
             dataLoader.StartNewValidationSet()
             GetVisiableLayer = dataLoader.GiveVisibleLayerForValidation
             setSize = dataLoader.validationSetSize
-            rmsesFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(verbose=True)))
+            rmsesFile.write("Epoch {0}, RMSE {1}\n".format(i+1, computeRMSE(verbose=True)))
             rmsesFile.flush()
-        with open("TRAINING_RMSE.txt", "a") as rmsesFile:
+        with open(sys.argv[1]+"TRAINING_RMSE.txt", "a") as rmsesFile:
             dataLoader.StartNewValidationFromTrainingSet()
             GetVisiableLayer = dataLoader.GiveVisibleLayerForValidationFromTraining
             setSize = dataLoader.validationFromTrainingSetSize
-            rmsesFile.write("Epoch {0}, RMSE {1}\n".format(i, computeRMSE(verbose=True)))
+            rmsesFile.write("Epoch {0}, RMSE {1}\n".format(i+1, computeRMSE(verbose=True)))
             rmsesFile.flush()
-        print("-----------------")
     sys.stdout.flush()
     rbm.saveRBM()
 

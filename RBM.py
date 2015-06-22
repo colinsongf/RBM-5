@@ -43,9 +43,9 @@ class RBM():
         self.wGlobal = np.random.normal(0, 0.01, (K, F, M))             # Weights updating after each mini sets
 
         #ASK
-        self.vBiasesGlobal = np.log(vBiasesInitialization/(1-vBiasesInitialization))                      # Visible layer biases updating after each mini sets
+        # self.vBiasesGlobal = np.log(vBiasesInitialization/(1-vBiasesInitialization))                      # Visible layer biases updating after each mini sets
         # self.vBiasesGlobal = vBiasesInitialization
-        # self.vBiasesGlobal = np.zeros((K, M), dtype=np.float64)
+        self.vBiasesGlobal = np.zeros((K, M), dtype=np.float64)
         self.hBiasesGlobal = np.zeros((1, F), dtype=np.float64)         # Hidden layer biases updating after each mini sets
 
         self.wMomentumTable = np.zeros((K, F, M), dtype=np.float64)
